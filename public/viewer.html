@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ViewFlow — Viewer</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="toast-wrap" id="toastWrap"></div>
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="sb-brand"><div class="emblem">VF</div><div><div class="name">ViewFlow</div><div class="role-tag">Panel Viewer</div></div></div>
+    <nav id="sbNav"></nav>
+    <div class="sb-foot">
+      <div class="sb-user"><div class="un" id="sbUserName">—</div><div class="ue" id="sbUserEmail">—</div></div>
+      <button class="btn btn-ghost btn-sm" style="width:100%" onclick="logout()">Cerrar sesión</button>
+    </div>
+  </aside>
+  <main class="main" id="mainContent"></main>
+</div>
+<div id="modalRoot"></div>
+<div id="supportWidgetRoot"></div>
+<script src="/js/api.js"></script>
+<script src="/js/support-widget.js"></script>
+<script src="/js/live-updates.js"></script>
+<script src="/js/viewer.js"></script>
+</body>
+</html>

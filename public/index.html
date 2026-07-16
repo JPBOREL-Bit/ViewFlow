@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ViewFlow</title>
+<link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="/css/landing.css">
+</head>
+<body>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<nav class="nav-top">
+  <div class="brand-mark"><div class="emblem">VF</div> ViewFlow</div>
+  <div style="display:flex; gap:10px;">
+    <button class="btn btn-ghost btn-sm" onclick="openLogin()">Iniciar sesión</button>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="eyebrow">Atención humana, verificada</div>
+  <h1 id="heroTitle">Impulsá tu contenido, de verdad</h1>
+  <p class="sub" id="heroDesc">Conectamos creadores que buscan crecimiento real con viewers que ganan créditos por su tiempo. Simple, transparente y medible.</p>
+  <div class="hero-actions">
+    <button class="btn btn-primary" onclick="openRegister('creator')">Quiero ser creador</button>
+    <button class="btn btn-ghost" onclick="openRegister('viewer')">Quiero ser viewer</button>
+  </div>
+</section>
+
+<div class="role-cards">
+  <div class="role-card">
+    <div class="role-icon">C</div>
+    <h3>¿Querés ser creador?</h3>
+    <p>Comprá créditos y conseguí que viewers reales miren tu video de YouTube el tiempo que necesitás, con costos claros y sin sorpresas.</p>
+    <button class="btn btn-primary btn-sm" onclick="openRegister('creator')">Registrarme como creador</button>
+  </div>
+  <div class="role-card">
+    <div class="role-icon">V</div>
+    <h3>¿Querés ser viewer?</h3>
+    <p>Mirá videos con la pestaña activa y ganá créditos que después podés retirar como dinero real, cuando quieras.</p>
+    <button class="btn btn-primary btn-sm" onclick="openRegister('viewer')">Registrarme como viewer</button>
+  </div>
+</div>
+
+<section class="section">
+  <div class="kicker">Quiénes somos</div>
+  <h2>Un marketplace de atención real</h2>
+  <p class="lead">ViewFlow conecta a dos partes: personas que crean contenido y necesitan que las vean, y personas que tienen tiempo disponible y quieren ganar algo por prestarle atención real a ese contenido. Nada de bots, nada de vistas falsas — cada vista se verifica con la pestaña activa y un tiempo mínimo cumplido.</p>
+</section>
+
+<section class="section">
+  <div class="kicker">Cómo funciona</div>
+  <h2>Tres pasos, sin vueltas</h2>
+  <div class="steps">
+    <div class="step"><div class="num">01</div><h4>Elegís tu rol</h4><p>Te registrás como creador si querés promocionar tu video, o como viewer si querés ganar créditos viéndolos.</p></div>
+    <div class="step"><div class="num">02</div><h4>Se aprueba tu cuenta</h4><p>El administrador revisa cada registro manualmente antes de darte acceso a tu panel.</p></div>
+    <div class="step"><div class="num">03</div><h4>Usás la plataforma</h4><p>El creador publica campañas con créditos ya cargados; el viewer mira videos y acumula créditos para retirar.</p></div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="kicker">Preguntas frecuentes</div>
+  <h2>Todo lo que necesitás saber</h2>
+  <details class="faq-item"><summary>¿Cuánto vale un crédito?</summary><p>100 créditos equivalen a 1 dólar. El precio en pesos se calcula según la cotización configurada.</p></details>
+  <details class="faq-item"><summary>¿Qué plataformas de video soporta?</summary><p>Por ahora, solo YouTube — tanto videos normales como Shorts.</p></details>
+  <details class="faq-item"><summary>¿Cómo retiro mis créditos?</summary><p>Desde tu panel de viewer, pedís el retiro con tus datos de pago. El administrador lo revisa y te acredita el dinero.</p></details>
+  <details class="faq-item"><summary>¿Puedo dejar el video reproduciéndose de fondo?</summary><p>No. La vista solo cuenta si la pestaña está activa; si salís, se pausa automáticamente.</p></details>
+</section>
+
+<footer>
+  <div>© <span id="year"></span> ViewFlow</div>
+  <div style="display:flex; gap:16px; align-items:center;">
+    <a href="/terminos.html">Términos y Condiciones</a>
+    <a href="/privacidad.html">Política de Privacidad</a>
+  </div>
+</footer>
+
+<div id="modalRoot"></div>
+
+<script src="/js/api.js"></script>
+<script src="/js/landing.js"></script>
+</body>
+</html>
