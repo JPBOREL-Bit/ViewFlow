@@ -62,12 +62,103 @@ function showMaintenanceOverlay(message) {
   el.id = 'maintenanceOverlay';
   el.style.cssText = 'position:fixed; inset:0; z-index:9999; background:var(--bg); display:flex; align-items:center; justify-content:center; padding:24px; text-align:center;';
   el.innerHTML = `
-    <div style="max-width:420px;">
+    <div style="max-width:380px; width:100%;">
       <img src="/img/logo.png" alt="ViewFlow" style="width:80px; margin:0 auto 20px;">
       <h2 style="margin-bottom:10px;">En mantenimiento</h2>
-      <p style="color:var(--text-dim); font-size:14.5px; line-height:1.6;">${message || 'ViewFlow se encuentra en mantenimiento. Volvé a intentarlo en un rato.'}</p>
+      <p style="color:var(--text-dim); font-size:14.5px; line-height:1.6; margin-bottom:22px;">${message || 'ViewFlow se encuentra en mantenimiento. Volvé a intentarlo en un rato.'}</p>
+      <form id="maintAdminForm" style="text-align:left; background:var(--panel); border:1px solid var(--border-soft); border-radius:14px; padding:20px;" onsubmit="submitMaintenanceLogin(event)">
+        <div style="font-size:12.5px; font-weight:600; color:var(--text-faint); text-transform:uppercase; letter-spacing:.04em; margin-bottom:12px;">¿Sos el administrador?</div>
+        <div class="field"><label>Gmail</label><input id="maint_email" type="email" required></div>
+        <div class="field" style="margin-bottom:14px;"><label>Contraseña</label><input id="maint_pass" type="password" required></div>
+        <button class="btn btn-primary btn-sm" type="submit" style="width:100%;">Iniciar sesión como admin</button>
+        <div id="maintLoginError" style="color:var(--red); font-size:12.5px; margin-top:8px;"></div>
+      </form>
     </div>`;
   document.body.appendChild(el);
+}
+
+async function submitMaintenanceLogin(e) {
+  e.preventDefault();
+  const errEl = document.getElementById('maintLoginError');
+  errEl.textContent = '';
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+      body: JSON.stringify({ email: document.getElementById('maint_email').value.trim(), password: document.getElementById('maint_pass').value })
+    });
+    const data = await res.json();
+    if (!res.ok) { errEl.textContent = data.message || data.error || 'No se pudo iniciar sesión.'; return; }
+    if (data.account.role !== 'admin') { errEl.textContent = 'Esa cuenta no es de administrador — el sitio sigue en mantenimiento.'; return; }
+    window.location.href = '/admin.html';
+  } catch (err) { errEl.textContent = 'Error de red, probá de nuevo.'; }
+}
+
+async function renderDevices(main) {
+  const { sessions, max } = await Api.get('/devices');
+  main.innerHTML = `
+    <div class="page-head"><div><h1>Dispositivos</h1><div class="ps">Hasta ${max} dispositivos conectados a la vez. Los que no marqués como "de confianza" cierran sesión solos al cerrar todas las pestañas.</div></div></div>
+    <div id="devicesList"></div>`;
+  renderDeviceCards(sessions);
+}
+
+function renderDeviceCards(sessions) {
+  const wrap = document.getElementById('devicesList');
+  if (!wrap) return;
+  if (sessions.length === 0) { wrap.innerHTML = '<div class="empty-state">No hay dispositivos conectados.</div>'; return; }
+  wrap.innerHTML = sessions.map(s => `
+    <div class="section-card" style="margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+      <div>
+        <div style="font-weight:700; display:flex; align-items:center; gap:8px;">
+          ${s.device}
+          ${s.isCurrent ? '<span class="badge badge-active">Este dispositivo</span>' : ''}
+          ${s.trusted ? '<span class="badge badge-approved">De confianza</span>' : ''}
+        </div>
+        <div class="mini-help" style="margin-top:4px;">
+          IP: ${s.ip || '—'} · ${s.location ? s.location : (s.isCurrent ? `<button type="button" onclick="requestDeviceLocation('${s.id}')" style="background:none; border:none; color:var(--gold); text-decoration:underline; font-size:inherit; cursor:pointer; padding:0;">Compartir ubicación</button>` : 'Ubicación no compartida')}
+        </div>
+        <div class="mini-help">Último acceso: ${new Date(s.lastActiveAt).toLocaleString()}</div>
+      </div>
+      <div style="display:flex; gap:8px;">
+        ${!s.trusted ? `<button class="btn btn-ghost btn-sm" onclick="trustDevice('${s.id}')">Confiar en este dispositivo</button>` : ''}
+        <button class="btn btn-danger btn-sm" onclick="revokeDevice('${s.id}', ${s.isCurrent})">Cerrar sesión</button>
+      </div>
+    </div>`).join('');
+}
+
+function requestDeviceLocation(sessionId) {
+  if (!navigator.geolocation) { toast('Tu navegador no admite ubicación.', true); return; }
+  navigator.geolocation.getCurrentPosition(async (pos) => {
+    try {
+      const { latitude, longitude } = pos.coords;
+      const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=es`);
+      const geo = await res.json();
+      const label = [geo.city || geo.locality, geo.countryName].filter(Boolean).join(', ') || `${latitude.toFixed(2)}, ${longitude.toFixed(2)}`;
+      await Api.post('/devices/location', { label });
+      toast('Ubicación guardada.');
+      renderPage();
+    } catch (e) { toast('No se pudo resolver la ubicación.', true); }
+  }, () => { toast('No diste permiso de ubicación.', true); });
+}
+
+async function trustDevice(sessionId) {
+  const password = prompt('Ingresá tu contraseña para confiar en este dispositivo:');
+  if (!password) return;
+  try {
+    const r = await Api.post(`/devices/${sessionId}/trust`, { password });
+    toast(r.needsRelogin ? 'Confirmado. Ese dispositivo va a mantener la sesión la próxima vez que inicie sesión.' : 'Este dispositivo ahora mantiene la sesión iniciada por 30 días.');
+    renderPage();
+  } catch (err) { toast(err.message, true); }
+}
+
+async function revokeDevice(sessionId, isCurrent) {
+  const password = prompt('Ingresá tu contraseña para cerrar sesión en ese dispositivo:');
+  if (!password) return;
+  try {
+    await Api.post(`/devices/${sessionId}/revoke`, { password });
+    if (isCurrent) { toast('Sesión cerrada.'); window.location.href = '/'; return; }
+    toast('Sesión cerrada en ese dispositivo.');
+    renderPage();
+  } catch (err) { toast(err.message, true); }
 }
 
 function applyTheme(theme) {

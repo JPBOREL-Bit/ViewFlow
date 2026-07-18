@@ -14,7 +14,8 @@ const NAV = [
   { id: 'verify', label: 'Verificación' },
   { id: 'messages', label: 'Mensajes' },
   { id: 'taxes', label: 'Impuestos' },
-  { id: 'settings', label: 'Configuración' }
+  { id: 'settings', label: 'Configuración' },
+  { id: 'devices', label: 'Dispositivos' }
 ];
 function buildNav(counts) {
   counts = counts || {};
@@ -65,7 +66,7 @@ async function renderPage() {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.page === currentPage));
   const main = document.getElementById('mainContent');
   main.innerHTML = '<div class="empty-state">Cargando...</div>';
-  const renderers = { overview: renderOverview, users: renderUsers, creators: renderCreatorsSection, viewers: renderViewersSection, campaigns: renderCampaigns, purchases: renderPurchases, withdrawals: renderWithdrawals, donations: renderDonations, verify: renderVerify, messages: renderMessages, taxes: renderTaxes, settings: renderSettings };
+  const renderers = { overview: renderOverview, users: renderUsers, creators: renderCreatorsSection, viewers: renderViewersSection, campaigns: renderCampaigns, purchases: renderPurchases, withdrawals: renderWithdrawals, donations: renderDonations, verify: renderVerify, messages: renderMessages, taxes: renderTaxes, settings: renderSettings, devices: renderDevices };
   try { await renderers[currentPage](main); } catch (e) { main.innerHTML = `<div class="empty-state">${e.message}</div>`; }
 }
 

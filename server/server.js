@@ -16,6 +16,7 @@ const { router: storeRoutes } = require('./routes/store');
 const { router: withdrawalRoutes } = require('./routes/withdrawals');
 const messageRoutes = require('./routes/messages');
 const donationRoutes = require('./routes/donations');
+const deviceRoutes = require('./routes/devices');
 const adminRoutes = require('./routes/admin');
 
 ensureAdminSeed();
@@ -23,6 +24,7 @@ startExchangeRateJob();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+app.set('trust proxy', true); // Render está detrás de un proxy — necesario para obtener la IP real del visitante
 
 app.use(express.json());
 app.use(cookieParser());
@@ -35,7 +37,7 @@ app.use('/api', (req, res, next) => { res.set('Cache-Control', 'no-store'); next
 // Modo mantenimiento: si está activo, solo el admin puede seguir usando la
 // API. El resto recibe un 503 con aviso — el frontend interpreta esto y
 // muestra la pantalla de "en mantenimiento" en vez del panel.
-const MAINTENANCE_ALLOWLIST = ['/api/auth/login', '/api/auth/me', '/api/auth/logout', '/api/public-settings', '/api/version', '/api/health'];
+const MAINTENANCE_ALLOWLIST = ['/auth/login', '/auth/me', '/auth/logout', '/public-settings', '/version', '/health'];
 app.use('/api', (req, res, next) => {
   if (req.path.startsWith('/admin')) return next();
   if (MAINTENANCE_ALLOWLIST.includes(req.path)) return next();
@@ -52,13 +54,14 @@ app.use('/api/store', storeRoutes);
 app.use('/api/withdrawals', withdrawalRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/donations', donationRoutes);
+app.use('/api/devices', deviceRoutes);
 app.use('/api/admin', adminRoutes);
 
 // Settings públicos (solo lo necesario para pintar la landing, nada sensible).
 app.get('/api/public-settings', (req, res) => {
   const db = getDB();
-  const { siteTitle, siteTagline, siteDesc } = db.settings;
-  res.json({ siteTitle, siteTagline, siteDesc });
+  const { siteTitle, siteTagline, siteDesc, maintenanceMode, maintenanceMessage } = db.settings;
+  res.json({ siteTitle, siteTagline, siteDesc, maintenanceMode, maintenanceMessage });
 });
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));

@@ -6,6 +6,7 @@ Api.get('/public-settings').then(s => {
   document.title = s.siteTitle;
   document.getElementById('heroTitle').textContent = s.siteTagline;
   document.getElementById('heroDesc').textContent = s.siteDesc;
+  if (s.maintenanceMode) showMaintenanceOverlay(s.maintenanceMessage);
 }).catch(() => {});
 
 // Si ya hay sesión activa, mandamos directo al panel correspondiente.

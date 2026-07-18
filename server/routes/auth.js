@@ -2,7 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const { getDB, saveDB } = require('../db');
-const { hashPassword, checkPassword, setSessionCookie, clearSessionCookie, publicAccount, requireAuth } = require('../auth');
+const { hashPassword, checkPassword, setSessionCookie, clearSessionCookie, createSession, publicAccount, requireAuth } = require('../auth');
 const { uid, genVerifyCode } = require('../util');
 
 function findByEmail(db, email) {
@@ -78,11 +78,18 @@ router.post('/login', (req, res) => {
   if (acc.status === 'rejected') return res.status(403).json({ error: 'Tu solicitud fue rechazada.' });
   if (acc.status === 'blocked') return res.status(403).json({ error: 'Tu cuenta está bloqueada.' });
 
-  setSessionCookie(res, acc.id);
+  const { session, error } = createSession(acc.id, req);
+  if (error) return res.status(429).json({ error });
+  setSessionCookie(res, acc.id, session.id, false);
   res.json({ ok: true, account: publicAccount(acc) });
 });
 
 router.post('/logout', (req, res) => {
+  if (req.sessionId) {
+    const db = getDB();
+    db.sessions = db.sessions.filter(s => s.id !== req.sessionId);
+    saveDB(db);
+  }
   clearSessionCookie(res);
   res.json({ ok: true });
 });

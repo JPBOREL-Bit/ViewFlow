@@ -10,7 +10,8 @@ const NAV = [
   { id: 'donate', label: 'Donar a viewers' },
   { id: 'withdraw', label: 'Retirar' },
   { id: 'history', label: 'Actividad' },
-  { id: 'profile', label: 'Perfil' }
+  { id: 'profile', label: 'Perfil' },
+  { id: 'devices', label: 'Dispositivos' }
 ];
 function buildNav() {
   document.getElementById('sbNav').innerHTML = NAV.map(n =>
@@ -34,17 +35,20 @@ async function boot() {
   renderSupportWidget();
 }
 
+let campaignsPollInterval = null;
 async function renderPage() {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.page === currentPage));
+  if (campaignsPollInterval) { clearInterval(campaignsPollInterval); campaignsPollInterval = null; }
   const main = document.getElementById('mainContent');
   main.innerHTML = '<div class="empty-state">Cargando...</div>';
   try {
     if (currentPage === 'dashboard') await renderDashboard(main);
-    else if (currentPage === 'campaigns') await renderCampaigns(main);
+    else if (currentPage === 'campaigns') { await renderCampaigns(main); campaignsPollInterval = setInterval(() => renderCampaigns(main), 6000); }
     else if (currentPage === 'donate') await renderDonate(main);
     else if (currentPage === 'withdraw') renderWithdraw(main);
     else if (currentPage === 'history') await renderHistory(main);
     else if (currentPage === 'profile') renderProfile(main);
+    else if (currentPage === 'devices') await renderDevices(main);
   } catch (e) { main.innerHTML = `<div class="empty-state">${e.message}</div>`; }
 }
 

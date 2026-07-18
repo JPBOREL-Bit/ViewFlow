@@ -10,7 +10,8 @@ const NAV = [
   { id: 'store', label: 'Tienda' },
   { id: 'purchases', label: 'Mis compras' },
   { id: 'donate', label: 'Donar a viewers' },
-  { id: 'profile', label: 'Perfil' }
+  { id: 'profile', label: 'Perfil' },
+  { id: 'devices', label: 'Dispositivos' }
 ];
 
 function buildNav() {
@@ -49,7 +50,9 @@ async function renderPage() {
     else if (currentPage === 'finished') await renderFinished(main);
     else if (currentPage === 'store') await renderStore(main);
     else if (currentPage === 'purchases') await renderPurchases(main);
+    else if (currentPage === 'donate') await renderDonate(main);
     else if (currentPage === 'profile') renderProfile(main);
+    else if (currentPage === 'devices') await renderDevices(main);
   } catch (e) { main.innerHTML = `<div class="empty-state">${e.message}</div>`; }
   main.style.animation = 'none'; void main.offsetWidth; main.style.animation = '';
 }

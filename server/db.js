@@ -38,7 +38,8 @@ function defaultDB() {
       siteDesc: 'Conectamos creadores que buscan crecimiento real con viewers que ganan créditos por su tiempo.',
       maintenanceMode: false,
       maintenanceMessage: 'ViewFlow se encuentra en mantenimiento. Volvé a intentarlo en un rato.'
-    }
+    },
+    sessions: [] // { id, accountId, device, ip, location, trusted, createdAt, lastActiveAt }
   };
 }
 
@@ -49,6 +50,7 @@ function migrate(db) {
   if (!Array.isArray(db.donations)) db.donations = [];
   if (!Array.isArray(db.verifyRequests)) db.verifyRequests = [];
   if (!Array.isArray(db.activityLog)) db.activityLog = [];
+  if (!Array.isArray(db.sessions)) db.sessions = [];
   (db.accounts || []).forEach(a => {
     if (!a.theme) a.theme = 'light';
     if (!Array.isArray(a.ledger)) a.ledger = [];

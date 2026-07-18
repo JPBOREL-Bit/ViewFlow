@@ -77,7 +77,7 @@ router.get('/active', requireAuth(), (req, res) => {
   const db = getDB();
   let list = db.campaigns.filter(c => c.status === 'active');
   if (req.account.role === 'viewer') {
-    const doneIds = new Set(db.participations.filter(p => p.viewerId === req.account.id && p.status === 'completed').map(p => p.campaignId));
+    const doneIds = new Set(db.participations.filter(p => p.viewerId === req.account.id && ['completed', 'active'].includes(p.status)).map(p => p.campaignId));
     list = list.filter(c => !doneIds.has(c.id));
   }
   list = list.map(c => ({ ...c, creatorName: (db.accounts.find(a => a.id === c.creatorId) || {}).visibleUser || '—' }));
