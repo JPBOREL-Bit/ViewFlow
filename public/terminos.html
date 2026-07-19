@@ -6,14 +6,22 @@
 <title>Términos y Condiciones — ViewFlow</title>
 <link rel="stylesheet" href="/css/style.css">
 <style>
-.legal-wrap{ max-width:760px; margin:0 auto; padding:50px 6vw 90px; }
+.legal-wrap{ max-width:820px; margin:0 auto; padding:50px 6vw 90px; }
 .legal-wrap h1{ font-size:30px; margin-bottom:6px; }
-.legal-wrap .updated{ color:var(--text-faint); font-size:12.5px; margin-bottom:36px; }
-.legal-wrap h2{ font-size:18px; margin:34px 0 12px; }
+.legal-wrap .updated{ color:var(--text-faint); font-size:12.5px; margin-bottom:30px; }
+.legal-wrap h2{ font-size:18px; margin:38px 0 12px; scroll-margin-top:20px; }
+.legal-wrap h3{ font-size:15px; margin:18px 0 8px; color:var(--text); }
 .legal-wrap p, .legal-wrap li{ color:var(--text-dim); font-size:14.5px; line-height:1.75; }
 .legal-wrap ul{ padding-left:20px; margin:10px 0; }
 .legal-wrap li{ margin-bottom:6px; }
 .back-link{ display:inline-block; margin-bottom:24px; color:var(--gold); font-weight:600; font-size:13.5px; }
+.toc{ background:var(--panel-2); border:1px solid var(--border-soft); border-radius:14px; padding:20px 24px; margin-bottom:10px; }
+.toc h3{ margin-top:0; font-size:13px; text-transform:uppercase; letter-spacing:.04em; color:var(--text-faint); }
+.toc ol{ columns:2; column-gap:24px; padding-left:18px; font-size:13.5px; }
+.toc li{ margin-bottom:6px; break-inside:avoid; }
+.toc a{ color:var(--text-dim); }
+.toc a:hover{ color:var(--gold); }
+@media(max-width:640px){ .toc ol{ columns:1; } }
 </style>
 </head>
 <body>
@@ -26,60 +34,196 @@
   <h1>Términos y Condiciones</h1>
   <div class="updated">Última actualización: <span id="updDate"></span></div>
 
-  <h2>1. Qué es ViewFlow</h2>
-  <p>ViewFlow es una plataforma que conecta a creadores de contenido de YouTube ("creadores") con personas que ven ese contenido a cambio de créditos internos ("viewers"). ViewFlow actúa como intermediario: administra la publicación de campañas, el sistema de créditos, y aprueba manualmente cada compra de créditos y cada retiro de dinero.</p>
+  <div class="toc">
+    <h3>Índice</h3>
+    <ol>
+      <li><a href="#s1">Qué es ViewFlow</a></li>
+      <li><a href="#s2">Cuentas, registro y verificación</a></li>
+      <li><a href="#s3">Créditos: qué son y qué no son</a></li>
+      <li><a href="#s4">Política de Pagos</a></li>
+      <li><a href="#s5">Política de Retiros</a></li>
+      <li><a href="#s6">Política de Reembolsos y Cancelaciones</a></li>
+      <li><a href="#s7">Política de Uso Aceptable</a></li>
+      <li><a href="#s8">Política de Donaciones</a></li>
+      <li><a href="#s9">Política de Verificación de Identidad</a></li>
+      <li><a href="#s10">Propiedad Intelectual y Copyright</a></li>
+      <li><a href="#s11">Descargo de Responsabilidad</a></li>
+      <li><a href="#s12">Aviso Legal</a></li>
+      <li><a href="#s13">Política Anti Fraude</a></li>
+      <li><a href="#s14">Suspensión y Bloqueo de Cuentas</a></li>
+      <li><a href="#s15">Política de Seguridad</a></li>
+      <li><a href="#s16">Conservación y Eliminación de Datos</a></li>
+      <li><a href="#s17">Política para Menores de Edad</a></li>
+      <li><a href="#s18">Mantenimiento y Actualizaciones</a></li>
+      <li><a href="#s19">Publicidad y Anuncios</a></li>
+      <li><a href="#s20">Comisiones e Impuestos</a></li>
+      <li><a href="#s21">Preguntas Frecuentes</a></li>
+      <li><a href="#s22">Centro de Ayuda / Soporte</a></li>
+      <li><a href="#s23">Contacto</a></li>
+      <li><a href="#s24">Licencia de Uso de la Plataforma</a></li>
+      <li><a href="#s25">Modificaciones del Servicio</a></li>
+      <li><a href="#s26">Modificaciones de estos Términos</a></li>
+    </ol>
+  </div>
 
-  <h2>2. Cuentas y aprobación</h2>
-  <p>Toda cuenta nueva (creador o viewer) queda pendiente de revisión y aprobación manual por parte del administrador antes de poder usarse. ViewFlow puede rechazar, bloquear o eliminar una cuenta a su criterio, especialmente ante sospecha de fraude, uso de bots, cuentas duplicadas o incumplimiento de estos Términos.</p>
+  <h2 id="s1">1. Qué es ViewFlow</h2>
+  <p>ViewFlow es una plataforma que conecta a creadores de contenido de YouTube ("creadores") con personas que ven ese contenido a cambio de créditos internos ("viewers"). ViewFlow actúa como intermediario: administra la publicación de campañas, el sistema de créditos, y aprueba manualmente cada compra de créditos y cada retiro de dinero. Al registrarte, aceptás operar bajo las reglas descriptas en este documento en su totalidad.</p>
 
-  <h2>3. Créditos: qué son y qué no son</h2>
+  <h2 id="s2">2. Cuentas, registro y verificación</h2>
+  <ul>
+    <li>Toda cuenta nueva (creador o viewer) queda en estado pendiente hasta que se verifica con un código de un solo uso, enviado por Gmail o por teléfono según lo que elijas al registrarte.</li>
+    <li>El código lo genera el sistema y te lo hacemos llegar nosotros; es de un solo uso y se invalida apenas lo usás para activar tu cuenta.</li>
+    <li>Los viewers reciben un nombre de usuario único asignado automáticamente (por ejemplo "Viewer_482"), que no pueden elegir ni repetir con otra cuenta. Los creadores eligen su propio nombre de usuario, que también debe ser único.</li>
+    <li>Además de la verificación por código, ViewFlow puede rechazar, bloquear o eliminar una cuenta a su criterio, especialmente ante sospecha de fraude, uso de bots, cuentas duplicadas o incumplimiento de estos Términos.</li>
+    <li>Podés tener tu cuenta iniciada en hasta 5 dispositivos a la vez. Si intentás iniciar sesión en un sexto dispositivo, vas a tener que cerrar sesión en alguno de los otros primero.</li>
+    <li>Un dispositivo que no marcás como "de confianza" cierra sesión solo al cerrar todas las pestañas del navegador. Uno marcado como "de confianza" mantiene la sesión iniciada hasta por 30 días.</li>
+  </ul>
+
+  <h2 id="s3">3. Créditos: qué son y qué no son</h2>
   <ul>
     <li>Los créditos son una unidad interna de la plataforma, no son una moneda de curso legal ni un instrumento financiero.</li>
     <li>100 créditos equivalen a 1 dólar estadounidense (USD) a los fines de calcular compras y retiros.</li>
-    <li>Los créditos no generan intereses ni rendimientos.</li>
-    <li>ViewFlow puede ajustar manualmente el saldo de una cuenta en casos de error, fraude o disputa.</li>
+    <li>Los créditos no generan intereses ni rendimientos, y no pueden transferirse fuera de la plataforma salvo por retiro o donación entre usuarios.</li>
+    <li>ViewFlow puede ajustar manualmente el saldo de una cuenta en casos de error, fraude o disputa. Todo ajuste manual queda registrado internamente.</li>
   </ul>
 
-  <h2>4. Compra de créditos</h2>
-  <p>Los creadores pueden comprar créditos a través de los medios de pago habilitados (transferencia bancaria o tarjeta de débito). Toda compra queda pendiente de aprobación manual del administrador, quien verifica el pago antes de acreditar los créditos. Las solicitudes de compra no confirmadas vencen automáticamente transcurrido el plazo indicado en la plataforma.</p>
-
-  <h2>5. Campañas y participación de viewers</h2>
+  <h2 id="s4">4. Política de Pagos</h2>
   <ul>
-    <li>El creador define el video, la cantidad de vistas y el tiempo mínimo de reproducción requerido.</li>
-    <li>El viewer solo recibe créditos si completa el tiempo requerido con la pestaña del navegador activa y en primer plano. Salir de la pestaña, minimizarla o intentar simular una visualización invalida la participación.</li>
-    <li>ViewFlow puede limitar la cantidad de intentos fallidos ("salidas") por campaña y bloquear la participación repetida ante uso indebido.</li>
+    <li>Los creadores pueden comprar créditos por Transferencia bancaria o Tarjeta de débito.</li>
+    <li>Si elegís Transferencia bancaria, tenés que enviar el comprobante de pago al Gmail de contacto que figura en el formulario de compra (ese Gmail lo puede actualizar el administrador cuando haga falta).</li>
+    <li>Toda compra queda pendiente de aprobación manual del administrador, quien verifica el pago antes de acreditar los créditos.</li>
+    <li>Las solicitudes de compra no confirmadas vencen automáticamente transcurrida una hora, y se eliminan solas de la cola.</li>
+    <li>El precio en pesos argentinos se calcula con una cotización del dólar que se actualiza automáticamente de forma periódica — el monto final en ARS puede variar levemente entre el momento en que armás el pedido y el momento en que lo pagás.</li>
+    <li>El total a pagar incluye el impuesto de compra vigente, que se suma sobre el valor base de los créditos (ver sección de Comisiones e Impuestos).</li>
   </ul>
 
-  <h2>6. Retiros</h2>
+  <h2 id="s5">5. Política de Retiros</h2>
   <ul>
-    <li>Los viewers pueden solicitar el retiro de sus créditos disponibles, sujeto al mínimo vigente en la plataforma y a un descuento por impuesto de retiro sobre el monto solicitado.</li>
-    <li>El nombre y apellido del titular de la cuenta/alias bancario informado debe coincidir exactamente con el nombre registrado en ViewFlow. Si no coincide, la solicitud no se abona; los créditos se reintegran a la cuenta descontando una penalidad, según se detalla en el panel de retiro al momento de solicitarlo.</li>
-    <li>Todo retiro es revisado y aprobado manualmente por el administrador antes de efectuarse el pago.</li>
-    <li>Se recomienda ser mayor de 18 años para operar con dinero real en la plataforma. Si sos menor de edad, se recomienda contar con la autorización y supervisión de un adulto responsable.</li>
+    <li>Los viewers pueden solicitar el retiro de sus créditos disponibles, con un mínimo vigente indicado en el panel de retiro.</li>
+    <li>Al pedir el retiro, elegís la compañía asociada a tu alias o CBU (BNA, Brubank, Naranja X, Mercado Pago o Ualá) y cargás el alias/CBU y el nombre completo del titular.</li>
+    <li>El nombre y apellido del titular informado debe coincidir exactamente con el nombre registrado en tu cuenta de ViewFlow. Si no coincide, el pago no se realiza: los créditos se reintegran a tu cuenta, mas un descuento del 5% en concepto de penalización por datos incorrectos.</li>
+    <li>Todo retiro es revisado y aprobado manualmente por el administrador antes de efectuarse el pago — no es instantáneo.</li>
+    <li>Se recomienda ser mayor de 18 años para operar con dinero real en la plataforma. Si sos menor de edad, se recomienda contar con la autorización y supervisión de un adulto responsable antes de solicitar un retiro.</li>
   </ul>
 
-  <h2>7. Donaciones entre usuarios</h2>
-  <p>Tanto creadores como viewers pueden donar créditos, que se distribuyen entre otros usuarios según las reglas vigentes en cada panel. Las donaciones son voluntarias e irreversibles una vez confirmadas.</p>
-
-  <h2>8. Conducta prohibida</h2>
+  <h2 id="s6">6. Política de Reembolsos y Cancelaciones</h2>
   <ul>
-    <li>Usar bots, scripts o automatizaciones para simular visualizaciones.</li>
-    <li>Crear múltiples cuentas para eludir límites de la plataforma.</li>
-    <li>Proporcionar información de pago falsa o de terceros sin autorización.</li>
-    <li>Publicar contenido que infrinja derechos de autor o las políticas de YouTube.</li>
+    <li>Las compras de créditos rechazadas por el administrador (por ejemplo, si el comprobante no se puede verificar) no generan cargo ni acreditación alguna.</li>
+    <li>Las solicitudes de compra que vencen automáticamente (pasada una hora sin confirmarse) se cancelan solas, sin necesidad de reembolso porque nunca se acreditaron créditos.</li>
+    <li>Si eliminás una campaña como creador, los créditos usados para crearla NO se reembolsan — se te avisa explícitamente antes de confirmar el borrado.</li>
+    <li>Un retiro rechazado por datos de titular que no coinciden se reintegra a tu saldo con el descuento del 5% indicado en la sección de Retiros.</li>
+    <li>Los créditos ganados por participar en una campaña no se reembolsan al creador aunque el viewer luego elimine su cuenta.</li>
   </ul>
-  <p>El incumplimiento puede resultar en la suspensión o eliminación de la cuenta y la pérdida de créditos no retirados.</p>
 
-  <h2>9. Limitación de responsabilidad</h2>
-  <p>ViewFlow no garantiza resultados específicos de crecimiento, monetización o alcance para los creadores. La plataforma se ofrece "tal cual", y ViewFlow no se responsabiliza por interrupciones del servicio, demoras en la aprobación de operaciones, ni por decisiones de terceros (como YouTube o las entidades de pago) que afecten el uso de la plataforma.</p>
+  <h2 id="s7">7. Política de Uso Aceptable</h2>
+  <p>Está estrictamente prohibido:</p>
+  <ul>
+    <li>Usar bots, scripts o cualquier automatización para simular visualizaciones de video o actividad de usuario.</li>
+    <li>Crear múltiples cuentas para eludir límites de la plataforma (máximo de dispositivos, límites de participación, etc.).</li>
+    <li>Proporcionar información de pago falsa, ajena o de un tercero sin su autorización.</li>
+    <li>Publicar contenido que infrinja derechos de autor o las políticas de uso de YouTube.</li>
+    <li>Intentar explotar errores del sistema para obtener créditos de forma indebida.</li>
+  </ul>
+  <p>El incumplimiento puede resultar en la suspensión o eliminación de la cuenta y la pérdida de créditos no retirados, sin derecho a reembolso.</p>
 
-  <h2>10. Modificaciones</h2>
+  <h2 id="s8">8. Política de Donaciones</h2>
+  <ul>
+    <li>Los creadores pueden donar créditos, que se reparten en partes iguales entre los viewers aprobados.</li>
+    <li>Los viewers también pueden donar créditos entre sí, repartidos entre el resto de los viewers.</li>
+    <li>Las donaciones quedan pendientes de aprobación del administrador antes de repartirse.</li>
+    <li>Las donaciones son voluntarias e irreversibles una vez aprobadas y repartidas.</li>
+    <li>A diferencia de compras y retiros, enviar una donación no requiere código de verificación adicional.</li>
+  </ul>
+
+  <h2 id="s9">9. Política de Verificación de Identidad</h2>
+  <ul>
+    <li>Para operar con dinero real (comprar créditos o retirarlos), ViewFlow puede solicitar verificación adicional mediante un código de un solo uso enviado a tu Gmail o teléfono.</li>
+    <li>Toda solicitud de retiro exige que el nombre del titular de la cuenta bancaria/alias coincida exactamente con el nombre registrado, como forma de verificar que quien retira es efectivamente el dueño de la cuenta.</li>
+    <li>ViewFlow puede pedir información adicional en cualquier momento si detecta actividad inusual en una cuenta.</li>
+  </ul>
+
+  <h2 id="s10">10. Propiedad Intelectual y Copyright</h2>
+  <ul>
+    <li>El nombre "ViewFlow", su logo y el diseño de la plataforma son propiedad de sus desarrolladores y no pueden reproducirse sin autorización.</li>
+    <li>Los creadores son los únicos responsables de contar con los derechos necesarios sobre el contenido de YouTube que promocionan en sus campañas.</li>
+    <li>ViewFlow no aloja ni reproduce contenido de video directamente: los videos se muestran embebidos desde YouTube, sujeto a los términos de YouTube/Google.</li>
+    <li>Si considerás que un creador está usando contenido sin autorización, podés reportarlo por el canal de Soporte.</li>
+  </ul>
+
+  <h2 id="s11">11. Descargo de Responsabilidad</h2>
+  <p>ViewFlow no garantiza resultados específicos de crecimiento, monetización o alcance para los creadores. La plataforma se ofrece "tal cual", sin garantías de disponibilidad ininterrumpida. ViewFlow no se responsabiliza por interrupciones del servicio, demoras en la aprobación de operaciones, errores de terceros (bancos, billeteras virtuales, YouTube) ni por pérdidas derivadas del uso indebido de la plataforma por parte de otros usuarios.</p>
+
+  <h2 id="s12">12. Aviso Legal</h2>
+  <p>El uso de ViewFlow implica la aceptación plena de estos Términos y de la Política de Privacidad. Si no estás de acuerdo con alguna parte de estos documentos, no debés registrarte ni usar la plataforma. ViewFlow se reserva el derecho de admisión y permanencia de cualquier usuario.</p>
+
+  <h2 id="s13">13. Política Anti Fraude</h2>
+  <ul>
+    <li>ViewFlow monitorea automáticamente movimientos de créditos inusuales (por ejemplo, incrementos grandes o sin un origen claro de compra, campaña o donación), que quedan marcados internamente para revisión.</li>
+    <li>Los intentos de inicio de sesión fallidos se registran junto con el Gmail utilizado y la dirección IP, como medida de seguridad.</li>
+    <li>Toda acción relevante dentro de la plataforma (registros, compras, retiros, donaciones, creación de campañas, participación de viewers, ajustes de créditos) queda registrada en un historial interno auditable por el administrador.</li>
+    <li>ViewFlow puede suspender preventivamente una cuenta mientras investiga actividad sospechosa, sin necesidad de aviso previo.</li>
+  </ul>
+
+  <h2 id="s14">14. Suspensión y Bloqueo de Cuentas</h2>
+  <ul>
+    <li>ViewFlow puede suspender o bloquear una cuenta ante incumplimiento de estos Términos, sospecha de fraude, uso de bots, datos de pago falsos, o abuso del sistema de campañas.</li>
+    <li>Una cuenta bloqueada no puede iniciar sesión ni operar créditos hasta que el administrador la reactive, si corresponde.</li>
+    <li>Los créditos de una cuenta bloqueada por fraude confirmado pueden perderse sin derecho a reembolso.</li>
+  </ul>
+
+  <h2 id="s15">15. Política de Seguridad</h2>
+  <ul>
+    <li>Las contraseñas se almacenan siempre cifradas — nadie en ViewFlow, ni siquiera el administrador, puede ver tu contraseña en texto plano.</li>
+    <li>La sesión se gestiona con una cookie técnica cifrada, no accesible desde JavaScript, que identifica tu dispositivo.</li>
+    <li>Podés ver y cerrar remotamente la sesión de cualquiera de tus dispositivos conectados desde la sección "Dispositivos" de tu perfil.</li>
+    <li>Recomendamos usar una contraseña de al menos 8 caracteres, distinta a la que usás en otros sitios.</li>
+  </ul>
+
+  <h2 id="s16">16. Conservación y Eliminación de Datos</h2>
+  <p>Conservamos tus datos mientras tu cuenta esté activa. Si solicitás la eliminación de tu cuenta por el canal de Soporte, tus datos personales se eliminan del sistema, salvo la información que debamos conservar por registros contables, prevención de fraude, o para cumplir con requerimientos legales.</p>
+
+  <h2 id="s17">17. Política para Menores de Edad</h2>
+  <p>ViewFlow recomienda que las personas menores de 18 años usen la plataforma con la autorización y supervisión de un adulto responsable, especialmente para operaciones que involucren dinero real (compras y retiros). ViewFlow puede solicitar confirmación adicional si detecta indicios de que una cuenta pertenece a un menor de edad operando sin supervisión.</p>
+
+  <h2 id="s18">18. Política de Mantenimiento y Actualizaciones</h2>
+  <p>ViewFlow puede poner la plataforma en modo mantenimiento en cualquier momento, sin un horario fijo preestablecido, para aplicar mejoras o corregir errores. Durante el mantenimiento, el acceso queda restringido para todos los usuarios excepto el administrador, y se muestra un aviso claro en pantalla. Intentamos que estas ventanas sean lo más breves posible.</p>
+
+  <h2 id="s19">19. Política de Publicidad y Anuncios</h2>
+  <p>ViewFlow puede mostrar anuncios de terceros (por ejemplo, a través de Google AdSense) únicamente en la landing pública y en la pantalla de Dashboard de los paneles de creador y viewer. No se muestran anuncios en pantallas donde estés activamente ganando o gastando créditos (campañas, participación, tienda, retiro, perfil, soporte). Si en el futuro se habilitan anuncios de Google, eso puede implicar el uso de cookies de terceros — se actualizará esta política cuando corresponda.</p>
+
+  <h2 id="s20">20. Política de Comisiones e Impuestos</h2>
+  <ul>
+    <li>La compra de créditos tiene un impuesto que se suma sobre el valor base (actualmente 15%, sujeto a revisión y posible reducción según indicadores internos de la plataforma).</li>
+    <li>El retiro de créditos tiene un impuesto que se descuenta del monto solicitado (actualmente 15%).</li>
+    <li>Un retiro rechazado por datos de titular que no coinciden tiene una penalización adicional del 5% al reintegrarse.</li>
+    <li>ViewFlow no cobra comisión sobre la creación de campañas más allá del costo de los créditos destinados a los viewers.</li>
+  </ul>
+
+  <h2 id="s21">21. Preguntas Frecuentes</h2>
+  <p><b>¿Cuánto vale un crédito?</b> 100 créditos equivalen a 1 dólar (USD).</p>
+  <p><b>¿Cómo retiro mis créditos?</b> Desde tu panel de viewer, con tus datos de pago. El administrador lo revisa y te acredita el dinero.</p>
+  <p><b>¿Puedo dejar el video de fondo?</b> No. La vista solo cuenta si la pestaña está activa y en primer plano; si salís, se pausa automáticamente.</p>
+  <p><b>¿Qué pasa si salgo de una campaña antes de tiempo?</b> No recibís créditos por esa participación. Si salís de la misma campaña más de dos veces, quedás bloqueado para volver a intentarla.</p>
+  <p><b>¿El video tiene que durar exactamente lo que pidió el creador?</b> No necesariamente: si el video en sí dura menos que el tiempo pedido, alcanza con mirarlo completo — igual cobrás la recompensa completa, porque el creador paga por el tiempo que configuró de todas formas.</p>
+
+  <h2 id="s22">22. Centro de Ayuda / Soporte</h2>
+  <p>Dentro de cada panel encontrás un botón de Soporte con chat directo y preguntas sugeridas para consultas frecuentes. El administrador responde los mensajes que no resuelve el asistente automático.</p>
+
+  <h2 id="s23">23. Contacto</h2>
+  <p>Ante dudas sobre estos Términos, sobre tu cuenta, o cualquier otra consulta, escribinos por el canal de Soporte dentro de la plataforma.</p>
+
+  <h2 id="s24">24. Licencia de Uso de la Plataforma</h2>
+  <p>ViewFlow te otorga una licencia limitada, no exclusiva e intransferible para usar la plataforma únicamente con los fines para los que fue diseñada (promoción de contenido y participación como viewer). No está permitido copiar, modificar, descompilar o revender el acceso a la plataforma.</p>
+
+  <h2 id="s25">25. Política de Modificaciones del Servicio</h2>
+  <p>Las funciones de ViewFlow pueden cambiar con el tiempo: podemos agregar, modificar o discontinuar funciones, ajustar límites (como el mínimo de retiro o la cantidad de dispositivos permitidos), o rediseñar paneles, sin que eso genere derecho a compensación. Los cambios importantes se reflejan en este documento con su fecha de actualización.</p>
+
+  <h2 id="s26">26. Modificaciones de estos Términos</h2>
   <p>ViewFlow puede actualizar estos Términos en cualquier momento. El uso continuado de la plataforma después de una actualización implica la aceptación de los nuevos términos.</p>
-
-  <h2>11. Contacto</h2>
-  <p>Ante dudas sobre estos Términos, podés escribir por el canal de Soporte dentro de la plataforma.</p>
 </div>
 
+
+<div class="legal-wrap" style="padding-top:0;"><p style="font-size:13px; color:var(--text-faint);">Ver también: <a href="/privacidad.html">Política de Privacidad</a> · <a href="/cookies.html">Política de Cookies</a></p></div>
 <script>document.getElementById('updDate').textContent = new Date().toLocaleDateString('es-AR');</script>
 </body>
 </html>

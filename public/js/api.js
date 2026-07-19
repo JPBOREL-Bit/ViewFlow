@@ -103,7 +103,7 @@ function renderDeviceCards(sessions) {
           ${s.trusted ? '<span class="badge badge-approved">De confianza</span>' : ''}
         </div>
         <div class="mini-help" style="margin-top:4px;">
-          IP: ${s.ip || '—'} · ${s.location ? s.location : (s.isCurrent ? `<button type="button" onclick="requestDeviceLocation('${s.id}')" style="background:none; border:none; color:var(--gold); text-decoration:underline; font-size:inherit; cursor:pointer; padding:0;">Compartir ubicación</button>` : 'Ubicación no compartida')}
+          ${s.location ? s.location : (s.isCurrent ? `<button type="button" onclick="requestDeviceLocation('${s.id}')" style="background:none; border:none; color:var(--gold); text-decoration:underline; font-size:inherit; cursor:pointer; padding:0;">Compartir ubicación</button>` : 'Ubicación aproximada no disponible')}
         </div>
         <div class="mini-help">Último acceso: ${new Date(s.lastActiveAt).toLocaleString()}</div>
       </div>
@@ -121,7 +121,7 @@ function requestDeviceLocation(sessionId) {
       const { latitude, longitude } = pos.coords;
       const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=es`);
       const geo = await res.json();
-      const label = [geo.city || geo.locality, geo.countryName].filter(Boolean).join(', ') || `${latitude.toFixed(2)}, ${longitude.toFixed(2)}`;
+      const label = [geo.locality || geo.city, geo.principalSubdivision, geo.countryName].filter(Boolean).join(', ') || `${latitude.toFixed(2)}, ${longitude.toFixed(2)}`;
       await Api.post('/devices/location', { label });
       toast('Ubicación guardada.');
       renderPage();

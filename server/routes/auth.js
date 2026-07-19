@@ -22,7 +22,7 @@ function generateUniqueViewerName(db) {
 
 // ---- Registro ----
 router.post('/register', (req, res) => {
-  const { role, name, visibleUser, email, phone, ytUser, password, acceptedTerms } = req.body || {};
+  const { role, name, visibleUser, email, phone, ytUser, password, acceptedTerms, verifyMethod } = req.body || {};
   if (!['creator', 'viewer'].includes(role)) return res.status(400).json({ error: 'Rol inválido.' });
   if (!name || !email || !password) return res.status(400).json({ error: 'Faltan campos obligatorios.' });
   if (password.length < 8) return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres.' });
@@ -43,6 +43,7 @@ router.post('/register', (req, res) => {
     finalVisibleUser = String(visibleUser).trim();
   }
 
+  const method = (verifyMethod === 'phone' && phone) ? 'phone' : 'gmail';
   const acc = {
     id: uid(role),
     role,
@@ -56,32 +57,58 @@ router.post('/register', (req, res) => {
     theme: 'light',
     credits: 0,
     ledger: [],
-    verifyCode: null,
-    verifyCodeAt: null,
+    verifyCode: genVerifyCode(),
+    verifyCodeAt: Date.now(),
     acceptedTermsAt: Date.now(),
     createdAt: Date.now()
   };
   db.accounts.push(acc);
-  addLog(db, { type: 'user', message: `Nueva cuenta registrada: ${acc.visibleUser} (${role === 'creator' ? 'creador' : 'viewer'}, ${acc.email}) — pendiente de aprobación`, accountName: acc.visibleUser });
+  db.verifyRequests.push({ id: uid('vr'), accountId: acc.id, method, target: method === 'phone' ? acc.phone : acc.email, purpose: 'account', createdAt: Date.now() });
+  addLog(db, { type: 'user', message: `Nueva cuenta registrada: ${acc.visibleUser} (${role === 'creator' ? 'creador' : 'viewer'}, ${acc.email}) — pendiente de verificación por ${method === 'phone' ? 'teléfono' : 'Gmail'}`, accountName: acc.visibleUser });
   saveDB(db);
-  res.json({ ok: true, message: 'Cuenta creada. Queda pendiente de aprobación del administrador.', assignedUsername: role === 'viewer' ? finalVisibleUser : undefined });
+  res.json({ ok: true, message: 'Cuenta creada. Te vamos a mandar un código de verificación para activarla.', assignedUsername: role === 'viewer' ? finalVisibleUser : undefined });
+});
+
+// ---- Verificación de cuenta con código de un solo uso (Gmail o teléfono) ----
+router.post('/verify-account', (req, res) => {
+  const { email, password, code } = req.body || {};
+  const db = getDB();
+  const acc = findByEmail(db, email);
+  if (!acc || !checkPassword(password || '', acc.passwordHash)) return res.status(401).json({ error: 'Gmail o contraseña incorrectos.' });
+  if (acc.status === 'blocked') return res.status(403).json({ error: 'Tu cuenta está bloqueada.' });
+  if (!acc.verifyCode || acc.verifyCode !== String(code || '').trim()) return res.status(400).json({ error: 'El código de verificación no coincide.' });
+
+  acc.status = 'approved';
+  acc.verifyCode = null;
+  acc.verifyCodeAt = null;
+  db.verifyRequests = db.verifyRequests.filter(r => r.accountId !== acc.id);
+  addLog(db, { type: 'user', message: `${acc.visibleUser} verificó su cuenta con el código de un solo uso — cuenta activada`, accountName: acc.visibleUser });
+  saveDB(db);
+  res.json({ ok: true, message: 'Cuenta verificada. Ya podés iniciar sesión.' });
 });
 
 // ---- Login ----
-router.post('/login', (req, res) => {
+router.post('/login', async (req, res) => {
   const { email, password } = req.body || {};
   const db = getDB();
+  const ip = (req.headers['x-forwarded-for'] || req.ip || '').toString().split(',')[0].trim();
   const acc = findByEmail(db, email);
   if (!acc || !checkPassword(password || '', acc.passwordHash)) {
+    addLog(db, { type: 'alert', message: `Intento de inicio de sesión fallido con el Gmail "${email || '—'}" (contraseña incorrecta o cuenta inexistente)`, accountName: email || null, ip });
+    saveDB(db);
     return res.status(401).json({ error: 'Gmail o contraseña incorrectos.' });
   }
-  if (acc.status === 'pending') return res.status(403).json({ error: 'pending', message: 'Tu cuenta todavía está en revisión.' });
+  if (acc.status === 'pending') return res.status(403).json({ error: 'pending', message: 'Tu cuenta todavía no está verificada. Usá "Verificación" con el código que te mandamos.' });
   if (acc.status === 'rejected') return res.status(403).json({ error: 'Tu solicitud fue rechazada.' });
   if (acc.status === 'blocked') return res.status(403).json({ error: 'Tu cuenta está bloqueada.' });
 
-  const { session, error } = createSession(acc.id, req);
+  const { session, error } = await createSession(acc.id, req);
   if (error) return res.status(429).json({ error });
   setSessionCookie(res, acc.id, session.id, false);
+  const freshDb = getDB(); // createSession ya escribió la sesión nueva — releemos para no pisarla
+  const freshAcc = freshDb.accounts.find(a => a.id === acc.id);
+  addLog(freshDb, { type: 'user', message: `${freshAcc.visibleUser} (${freshAcc.role}) inició sesión`, accountName: freshAcc.visibleUser, ip });
+  saveDB(freshDb);
   res.json({ ok: true, account: publicAccount(acc) });
 });
 

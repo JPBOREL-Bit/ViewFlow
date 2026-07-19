@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Política de Cookies — ViewFlow</title>
+<link rel="stylesheet" href="/css/style.css">
+<style>
+.legal-wrap{ max-width:820px; margin:0 auto; padding:50px 6vw 90px; }
+.legal-wrap h1{ font-size:30px; margin-bottom:6px; }
+.legal-wrap .updated{ color:var(--text-faint); font-size:12.5px; margin-bottom:30px; }
+.legal-wrap h2{ font-size:18px; margin:34px 0 12px; }
+.legal-wrap p, .legal-wrap li{ color:var(--text-dim); font-size:14.5px; line-height:1.75; }
+.legal-wrap ul{ padding-left:20px; margin:10px 0; }
+.legal-wrap li{ margin-bottom:6px; }
+.back-link{ display:inline-block; margin-bottom:24px; color:var(--gold); font-weight:600; font-size:13.5px; }
+table{ margin:14px 0; } th, td{ font-size:13px; }
+</style>
+</head>
+<body>
+<nav class="nav-top">
+  <div class="brand-mark"><img src="/img/logo.png" alt="ViewFlow" class="emblem"> ViewFlow</div>
+</nav>
+
+<div class="legal-wrap">
+  <a class="back-link" href="/">← Volver al inicio</a>
+  <h1>Política de Cookies</h1>
+  <div class="updated">Última actualización: <span id="updDate"></span></div>
+
+  <h2>1. Qué es una cookie</h2>
+  <p>Una cookie es un pequeño archivo que el navegador guarda en tu dispositivo cuando visitás un sitio web. Sirve para que el sitio recuerde información entre una visita y otra, como si tenés una sesión iniciada.</p>
+
+  <h2>2. Qué cookies usa ViewFlow</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Cookie</th><th>Tipo</th><th>Para qué sirve</th><th>Duración</th></tr></thead>
+    <tbody>
+      <tr><td><code>vf_session</code></td><td>Técnica, esencial</td><td>Mantener tu sesión iniciada e identificar de forma segura tu dispositivo. No se puede leer desde JavaScript (httpOnly).</td><td>Hasta cerrar el navegador, o 30 días si marcaste el dispositivo como "de confianza"</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>Esta cookie es estrictamente necesaria para que la plataforma funcione (no podés iniciar sesión sin ella) — por eso no pedimos un consentimiento opcional para activarla, es parte esencial del servicio, igual que le pasa a cualquier sitio con cuentas de usuario.</p>
+
+  <h2>3. Cookies de publicidad (si están activas)</h2>
+  <p>Si en algún momento se muestran anuncios de terceros en la landing pública o en el Dashboard (por ejemplo a través de Google AdSense), esos anuncios pueden instalar sus propias cookies para medir visualizaciones o personalizar contenido, de acuerdo a las políticas de privacidad de esa red publicitaria — ajenas a ViewFlow. Estas cookies nunca aparecen en pantallas donde estés ganando o gastando créditos.</p>
+
+  <h2>4. Qué NO hacemos con las cookies</h2>
+  <ul>
+    <li>No usamos cookies para rastrear tu actividad fuera de ViewFlow.</li>
+    <li>No vendemos información de cookies a terceros.</li>
+    <li>No usamos cookies para leer tu contraseña ni ningún dato sensible — esos nunca viajan en una cookie.</li>
+  </ul>
+
+  <h2>5. Cómo controlar o borrar las cookies</h2>
+  <p>Podés borrar la cookie de sesión en cualquier momento desde la configuración de tu navegador, o simplemente usando el botón "Cerrar sesión" dentro de la plataforma, o desde la sección "Dispositivos" de tu perfil (que te deja cerrar sesión en cualquiera de tus dispositivos conectados). Ten en cuenta que si borrás la cookie técnica esencial, no vas a poder mantener la sesión iniciada.</p>
+
+  <h2>6. Cambios en esta política</h2>
+  <p>Si en el futuro sumamos nuevas cookies (por ejemplo al activar anuncios), vamos a actualizar esta página con el detalle correspondiente.</p>
+</div>
+
+<script>document.getElementById('updDate').textContent = new Date().toLocaleDateString('es-AR');</script>
+</body>
+</html>

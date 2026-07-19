@@ -260,7 +260,7 @@ async function renderWithdrawals(main) {
 async function approveWithdrawal(id) { await Api.put(`/admin/withdrawals/${id}/approve`); toast('Marcado como pagado.'); renderPage(); }
 async function rejectWithdrawal(id) { await Api.put(`/admin/withdrawals/${id}/reject`); toast('Rechazado y reembolsado.'); renderPage(); }
 
-const LOG_TYPE_LABEL = { campaign: 'Campaña', purchase: 'Compra', withdrawal: 'Retiro', donation: 'Donación', user: 'Usuario', system: 'Sistema', info: 'Otro' };
+const LOG_TYPE_LABEL = { campaign: 'Campaña', purchase: 'Compra', withdrawal: 'Retiro', donation: 'Donación', user: 'Usuario', system: 'Sistema', admin_credit: 'Créditos (admin)', alert: 'Alerta', info: 'Otro' };
 async function renderLogs(main, query, type) {
   query = query || '';
   type = type || 'all';
@@ -280,12 +280,32 @@ async function renderLogs(main, query, type) {
       </div>
     </div>
     <div class="section-card table-wrap">
-      <table><thead><tr><th>Fecha</th><th>Tipo</th><th>Usuario</th><th>Detalle</th></tr></thead>
-      <tbody>${logs.map(l => `<tr><td class="mono" style="white-space:nowrap;">${new Date(l.ts).toLocaleString()}</td>
-        <td><span class="badge badge-pending">${LOG_TYPE_LABEL[l.type] || l.type}</span></td>
-        <td>${l.accountName || '—'}</td><td>${l.message}</td></tr>`).join('')}</tbody></table>
+      <table><thead><tr><th>Fecha</th><th>Tipo</th><th>Usuario</th><th>Detalle</th><th>IP</th></tr></thead>
+      <tbody>${logs.map(l => `<tr style="${l.type === 'alert' ? 'background:var(--red-dim);' : ''}"><td class="mono" style="white-space:nowrap;">${new Date(l.ts).toLocaleString()}</td>
+        <td><span class="badge ${l.type === 'alert' ? 'badge-rejected' : 'badge-pending'}">${LOG_TYPE_LABEL[l.type] || l.type}</span></td>
+        <td>${l.accountName || '—'}</td><td style="${l.type === 'alert' ? 'color:#a13323; font-weight:600;' : ''}">${l.message}</td>
+        <td class="mono" style="white-space:nowrap;">${l.ip || '—'}</td></tr>`).join('')}</tbody></table>
       ${logs.length === 0 ? '<div class="empty-state">No hay eventos que coincidan con la búsqueda.</div>' : ''}
+    </div>
+    <div class="section-card" style="margin-top:16px; max-width:560px;">
+      <h3 style="margin-bottom:10px;">Agregar nota manual</h3>
+      <div class="mini-help" style="margin-bottom:12px;">Para dejar registrado algo vos mismo (ej. "Llamé al proveedor de hosting", "Confirmé el pago por WhatsApp con X").</div>
+      <div style="display:flex; gap:8px;">
+        <input id="manualLogNote" placeholder="Escribí la nota...">
+        <button class="btn btn-primary btn-sm" onclick="addManualLogNote()">Guardar</button>
+      </div>
     </div>`;
+}
+async function addManualLogNote() {
+  const input = document.getElementById('manualLogNote');
+  const text = input.value.trim();
+  if (!text) return;
+  try {
+    await Api.post('/admin/logs/note', { message: text });
+    input.value = '';
+    toast('Nota agregada al log.');
+    searchLogs();
+  } catch (err) { toast(err.message, true); }
 }
 function searchLogs() {
   const q = document.getElementById('logSearch').value;

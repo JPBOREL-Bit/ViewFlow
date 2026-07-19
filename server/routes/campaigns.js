@@ -177,6 +177,7 @@ router.post('/:id/participate/complete', requireAuth('viewer'), (req, res) => {
   if (camp.viewsDone >= camp.views) camp.status = 'finished';
   const acc = db.accounts.find(a => a.id === req.account.id);
   creditAccount(acc, camp.rewardPerView, 'Participación: ' + camp.title);
+  addLog(db, { type: 'campaign', message: `${acc.visibleUser} ganó ${camp.rewardPerView} créditos por participar en "${camp.title}"`, accountName: acc.visibleUser });
   saveDB(db);
   res.json({ ok: true, reward: camp.rewardPerView, credits: acc.credits });
 });
@@ -188,6 +189,9 @@ router.post('/:id/participate/abandon', requireAuth('viewer'), (req, res) => {
   const part = db.participations.find(p => p.id === participationId && p.viewerId === req.account.id && p.status === 'active');
   if (!part) return res.status(404).json({ error: 'Participación no encontrada.' });
   part.status = 'abandoned';
+  const acc = db.accounts.find(a => a.id === req.account.id);
+  const camp = db.campaigns.find(c => c.id === part.campaignId);
+  addLog(db, { type: 'campaign', message: `${acc ? acc.visibleUser : req.account.id} salió antes de tiempo de "${camp ? camp.title : part.campaignId}" — no recibe créditos`, accountName: acc ? acc.visibleUser : null });
   saveDB(db);
   res.json({ ok: true });
 });

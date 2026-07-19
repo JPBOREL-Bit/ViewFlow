@@ -81,14 +81,15 @@ function saveDB(db) {
 // Registra un evento en el log de actividad del admin. No guarda por sí solo:
 // hay que llamar a saveDB(db) después (así se puede combinar con otros
 // cambios en una sola escritura). type sirve para poder filtrar por color.
-function addLog(db, { type, message, accountName }) {
+function addLog(db, { type, message, accountName, ip }) {
   if (!Array.isArray(db.activityLog)) db.activityLog = [];
   db.activityLog.unshift({
     id: crypto.randomBytes(6).toString('hex'),
     ts: Date.now(),
     type: type || 'info',
     message: String(message || '').slice(0, 400),
-    accountName: accountName || null
+    accountName: accountName || null,
+    ip: ip || null
   });
   if (db.activityLog.length > 3000) db.activityLog.length = 3000;
 }

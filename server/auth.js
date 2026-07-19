@@ -59,9 +59,23 @@ function clearSessionCookie(res) {
   res.clearCookie(COOKIE_NAME);
 }
 
+async function lookupIpLocation(ip) {
+  if (!ip || ip === '127.0.0.1' || ip === '::1' || ip.startsWith('192.168.') || ip.startsWith('10.')) return null;
+  try {
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), 2500);
+    const res = await fetch(`https://ipapi.co/${ip}/json/`, { signal: controller.signal });
+    clearTimeout(t);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.error) return null;
+    return [data.region, data.country_name].filter(Boolean).join(', ') || null;
+  } catch (e) { return null; }
+}
+
 // Crea el registro de sesión de este dispositivo, respetando el máximo de
 // dispositivos conectados a la vez. Devuelve { session } o { error }.
-function createSession(accountId, req) {
+async function createSession(accountId, req) {
   const db = getDB();
   const now = Date.now();
   db.sessions = db.sessions.filter(s => s.trusted || (now - s.lastActiveAt) < 24 * 60 * 60 * 1000); // limpia sesiones no confiables viejas
@@ -69,12 +83,14 @@ function createSession(accountId, req) {
   if (activeCount >= MAX_DEVICES) {
     return { error: `Alcanzaste el máximo de ${MAX_DEVICES} dispositivos conectados. Cerrá sesión en otro dispositivo desde "Dispositivos" para poder entrar acá.` };
   }
+  const ip = (req.headers['x-forwarded-for'] || req.ip || '').toString().split(',')[0].trim();
   const session = {
     id: crypto.randomBytes(10).toString('hex'),
     accountId,
     device: parseDevice(req.headers['user-agent']),
-    ip: (req.headers['x-forwarded-for'] || req.ip || '').toString().split(',')[0].trim(),
-    location: null,
+    ip,
+    location: await lookupIpLocation(ip), // aproximado por IP — se puede refinar con "Compartir ubicación" (GPS)
+    locationPrecise: false,
     trusted: false,
     createdAt: now,
     lastActiveAt: now

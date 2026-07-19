@@ -78,6 +78,8 @@ router.put('/users/:id/status', (req, res) => {
   res.json({ ok: true });
 });
 
+const CREDIT_ALERT_THRESHOLD = 2000; // créditos — por arriba de esto, el ajuste se marca como alerta para revisar
+
 router.put('/users/:id/credits', (req, res) => {
   const { amount } = req.body || {};
   const db = getDB();
@@ -87,6 +89,10 @@ router.put('/users/:id/credits', (req, res) => {
   if (!val) return res.json({ ok: true });
   if (val > 0) creditAccount(acc, val, 'Ajuste manual del administrador');
   else { acc.credits = (acc.credits || 0) + val; acc.ledger.push({ id: uid('ldg'), ts: Date.now(), type: 'out', amount: Math.abs(val), detail: 'Ajuste manual del administrador' }); }
+  addLog(db, { type: 'admin_credit', message: `${req.account.visibleUser} ${val > 0 ? 'agregó' : 'quitó'} ${Math.abs(val)} créditos a ${acc.visibleUser} manualmente`, accountName: acc.visibleUser });
+  if (Math.abs(val) > CREDIT_ALERT_THRESHOLD) {
+    addLog(db, { type: 'alert', message: `Ajuste manual grande: ${req.account.visibleUser} ${val > 0 ? 'agregó' : 'quitó'} ${Math.abs(val)} créditos a ${acc.visibleUser} (por arriba de ${CREDIT_ALERT_THRESHOLD}) — revisar`, accountName: acc.visibleUser });
+  }
   saveDB(db);
   res.json({ ok: true, credits: acc.credits });
 });
@@ -129,6 +135,9 @@ router.put('/purchases/:id/approve', (req, res) => {
   if (admin && p.taxCredits) creditAccount(admin, p.taxCredits, `Impuesto de compra (${db.settings.purchaseTaxPct}%)`);
   p.status = 'approved';
   addLog(db, { type: 'purchase', message: `Compra aprobada: ${creator ? creator.visibleUser : p.creatorId} — ${p.credits} créditos ($${p.usd})`, accountName: creator ? creator.visibleUser : null });
+  if (p.credits > CREDIT_ALERT_THRESHOLD) {
+    addLog(db, { type: 'alert', message: `Compra grande aprobada: ${creator ? creator.visibleUser : p.creatorId} recibió ${p.credits} créditos de una sola vez — revisar que el pago sea legítimo`, accountName: creator ? creator.visibleUser : null });
+  }
   saveDB(db);
   res.json({ ok: true });
 });
@@ -263,6 +272,17 @@ router.get('/logs', (req, res) => {
   }
   const max = Math.min(parseInt(limit, 10) || 200, 1000);
   res.json({ logs: list.slice(0, max), total: list.length });
+});
+
+// Nota manual que el propio admin quiere dejar anotada en el log, para su
+// propio registro (no la genera ninguna acción automática del sistema).
+router.post('/logs/note', (req, res) => {
+  const { message } = req.body || {};
+  if (!message || !message.trim()) return res.status(400).json({ error: 'La nota no puede estar vacía.' });
+  const db = getDB();
+  addLog(db, { type: 'system', message: `Nota del admin: ${message.trim()}`, accountName: req.account.visibleUser });
+  saveDB(db);
+  res.json({ ok: true });
 });
 
 router.get('/taxes', (req, res) => {

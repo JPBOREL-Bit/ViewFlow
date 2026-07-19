@@ -11,7 +11,7 @@ router.get('/', (req, res) => {
   const list = db.sessions
     .filter(s => s.accountId === req.account.id)
     .sort((a, b) => b.lastActiveAt - a.lastActiveAt)
-    .map(s => ({ ...s, isCurrent: s.id === req.sessionId }));
+    .map(({ ip, ...s }) => ({ ...s, isCurrent: s.id === req.sessionId }));
   res.json({ sessions: list, max: MAX_DEVICES });
 });
 

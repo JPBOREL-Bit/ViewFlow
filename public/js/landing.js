@@ -53,6 +53,9 @@ function openRegister(role) {
         </div>
         <div class="field"><label>Usuario de YouTube</label><input id="rc_yt" placeholder="@usuario"></div>
         ${passwordFieldHTML('rc_pass', 'Contraseña', true, 8)}
+        <div class="field"><label class="req">¿Cómo querés recibir el código de verificación?</label>
+          <select id="rc_verifymethod"><option value="gmail">Por Gmail</option><option value="phone">Por teléfono</option></select>
+        </div>
         ${termsCheckboxHTML('rc_terms')}
         <div class="modal-foot">
           <button class="btn btn-primary" type="submit">Crear cuenta de creador</button>
@@ -68,6 +71,9 @@ function openRegister(role) {
         <div class="field"><label class="req">Gmail</label><input id="rv_email" type="email" required></div>
         <div class="field"><label>Teléfono (opcional)</label><input id="rv_phone"></div>
         ${passwordFieldHTML('rv_pass', 'Contraseña', true, 8)}
+        <div class="field"><label class="req">¿Cómo querés recibir el código de verificación?</label>
+          <select id="rv_verifymethod"><option value="gmail">Por Gmail</option><option value="phone">Por teléfono (necesitás cargar tu teléfono arriba)</option></select>
+        </div>
         ${termsCheckboxHTML('rv_terms')}
         <div class="modal-foot">
           <button class="btn btn-primary" type="submit">Crear cuenta de viewer</button>
@@ -82,8 +88,9 @@ function termsCheckboxHTML(id) {
     <div class="field" style="display:flex; align-items:flex-start; gap:8px;">
       <input type="checkbox" id="${id}" required style="width:auto; margin-top:3px;">
       <label for="${id}" style="font-size:12.5px; color:var(--text-dim); font-weight:400;">
-        Acepto los <a href="/terminos.html" target="_blank" style="color:var(--gold); text-decoration:underline;">Términos y Condiciones</a>
-        y la <a href="/privacidad.html" target="_blank" style="color:var(--gold); text-decoration:underline;">Política de Privacidad</a> de ViewFlow.
+        Acepto los <a href="/terminos.html" target="_blank" style="color:var(--gold); text-decoration:underline;">Términos y Condiciones</a>,
+        la <a href="/privacidad.html" target="_blank" style="color:var(--gold); text-decoration:underline;">Política de Privacidad</a>
+        y la <a href="/cookies.html" target="_blank" style="color:var(--gold); text-decoration:underline;">Política de Cookies</a> de ViewFlow.
       </label>
     </div>`;
 }
@@ -92,15 +99,17 @@ async function submitRegister(e, role) {
   e.preventDefault();
   const termsEl = document.getElementById(role === 'creator' ? 'rc_terms' : 'rv_terms');
   if (!termsEl.checked) { toast('Tenés que aceptar los Términos y la Política de Privacidad para registrarte.', true); return; }
+  const verifyMethod = document.getElementById(role === 'creator' ? 'rc_verifymethod' : 'rv_verifymethod').value;
   const payload = role === 'creator'
-    ? { role, visibleUser: rc_visible.value.trim(), name: rc_name.value.trim(), phone: rc_phone.value.trim(), email: rc_email.value.trim(), ytUser: rc_yt.value.trim(), password: rc_pass.value, acceptedTerms: true }
-    : { role, name: rv_name.value.trim(), visibleUser: rv_visible.value.trim(), email: rv_email.value.trim(), phone: rv_phone.value.trim(), password: rv_pass.value, acceptedTerms: true };
+    ? { role, visibleUser: rc_visible.value.trim(), name: rc_name.value.trim(), phone: rc_phone.value.trim(), email: rc_email.value.trim(), ytUser: rc_yt.value.trim(), password: rc_pass.value, acceptedTerms: true, verifyMethod }
+    : { role, name: rv_name.value.trim(), visibleUser: rv_visible.value.trim(), email: rv_email.value.trim(), phone: rv_phone.value.trim(), password: rv_pass.value, acceptedTerms: true, verifyMethod };
+  if (verifyMethod === 'phone' && !payload.phone) { toast('Para recibir el código por teléfono, primero cargá tu número.', true); return; }
   try {
     await Api.post('/auth/register', payload);
     renderModal(`
       <div class="modal-head"><h2>Cuenta creada</h2><button class="modal-close" onclick="closeModal()">×</button></div>
-      <div class="notice">Tu cuenta fue enviada a revisión.<br>En cuanto un administrador la apruebe, vas a poder ingresar a tu panel.</div>
-      <div class="modal-foot"><button class="btn btn-primary" onclick="closeModal()">Entendido</button></div>`);
+      <div class="notice">Te vamos a mandar un código de verificación de un solo uso por ${verifyMethod === 'phone' ? 'teléfono' : 'Gmail'}.<br>Usá el botón "Verificación" en la pantalla de inicio para activar tu cuenta con ese código.</div>
+      <div class="modal-foot"><button class="btn btn-primary" onclick="openVerifyAccount()">Ir a Verificación</button></div>`);
   } catch (err) { toast(err.message, true); }
 }
 
@@ -113,8 +122,35 @@ function openLogin() {
       <div class="modal-foot">
         <button class="btn btn-primary" type="submit">Ingresar</button>
         <button class="btn btn-ghost btn-sm" type="button" onclick="openForgotPassword()">Olvidé mi contraseña</button>
+        <button class="btn btn-ghost btn-sm" type="button" onclick="openVerifyAccount()">Verificación</button>
       </div>
     </form>`);
+}
+
+function openVerifyAccount() {
+  renderModal(`
+    <div class="modal-head"><h2>Verificación de cuenta</h2><button class="modal-close" onclick="closeModal()">×</button></div>
+    <div class="mini-help" style="margin-bottom:16px;">Poné tu Gmail, tu contraseña, y el código de un solo uso que te mandamos para activar tu cuenta.</div>
+    <form onsubmit="submitVerifyAccount(event)">
+      <div class="field"><label class="req">Gmail</label><input id="va_email" type="email" required></div>
+      ${passwordFieldHTML('va_pass', 'Contraseña', true)}
+      <div class="field"><label class="req">Código de verificación</label><input id="va_code" required maxlength="6" style="letter-spacing:.2em; text-align:center; font-family:'JetBrains Mono';"></div>
+      <div class="modal-foot">
+        <button class="btn btn-primary" type="submit">Verificar cuenta</button>
+        <button class="btn btn-ghost btn-sm" type="button" onclick="openLogin()">Volver a iniciar sesión</button>
+      </div>
+    </form>`);
+}
+
+async function submitVerifyAccount(e) {
+  e.preventDefault();
+  try {
+    await Api.post('/auth/verify-account', { email: va_email.value.trim(), password: va_pass.value, code: va_code.value.trim() });
+    renderModal(`
+      <div class="modal-head"><h2>Cuenta verificada</h2><button class="modal-close" onclick="closeModal()">×</button></div>
+      <div class="notice">Listo, tu cuenta ya está activa.</div>
+      <div class="modal-foot"><button class="btn btn-primary" onclick="openLogin()">Iniciar sesión</button></div>`);
+  } catch (err) { toast(err.message, true); }
 }
 
 async function submitLogin(e) {
@@ -127,9 +163,9 @@ async function submitLogin(e) {
   } catch (err) {
     if (err.data && err.data.error === 'pending') {
       renderModal(`
-        <div class="modal-head"><h2>Cuenta en revisión</h2><button class="modal-close" onclick="closeModal()">×</button></div>
-        <div class="notice">Tu cuenta todavía está en revisión.</div>
-        <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cerrar</button></div>`);
+        <div class="modal-head"><h2>Cuenta sin verificar</h2><button class="modal-close" onclick="closeModal()">×</button></div>
+        <div class="notice">Todavía no verificaste tu cuenta. Usá el código de un solo uso que te mandamos.</div>
+        <div class="modal-foot"><button class="btn btn-primary" onclick="openVerifyAccount()">Ir a Verificación</button></div>`);
     } else toast(err.message, true);
   }
 }
