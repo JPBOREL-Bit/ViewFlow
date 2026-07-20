@@ -48,14 +48,12 @@ function openRegister(role) {
         <div class="field"><label class="req">Nombre visible</label><input id="rc_visible" required></div>
         <div class="field"><label class="req">Nombre completo</label><input id="rc_name" required></div>
         <div class="grid-2">
-          <div class="field"><label class="req">Teléfono</label><input id="rc_phone" required></div>
+          <div class="field"><label>Teléfono (opcional — te lo vamos a pedir al comprar o retirar)</label><input id="rc_phone"></div>
           <div class="field"><label class="req">Gmail</label><input id="rc_email" type="email" required></div>
         </div>
         <div class="field"><label>Usuario de YouTube</label><input id="rc_yt" placeholder="@usuario"></div>
         ${passwordFieldHTML('rc_pass', 'Contraseña', true, 8)}
-        <div class="field"><label class="req">¿Cómo querés recibir el código de verificación?</label>
-          <select id="rc_verifymethod"><option value="gmail">Por Gmail</option><option value="phone">Por teléfono</option></select>
-        </div>
+        <div class="mini-help" style="margin-bottom:14px;">Te vamos a mandar un código de verificación a este Gmail para activar tu cuenta.</div>
         ${termsCheckboxHTML('rc_terms')}
         <div class="modal-foot">
           <button class="btn btn-primary" type="submit">Crear cuenta de creador</button>
@@ -69,11 +67,9 @@ function openRegister(role) {
         <div class="field"><label class="req">Nombre completo</label><input id="rv_name" required></div>
         <div class="field"><label class="req">Usuario visible</label><input id="rv_visible" required></div>
         <div class="field"><label class="req">Gmail</label><input id="rv_email" type="email" required></div>
-        <div class="field"><label>Teléfono (opcional)</label><input id="rv_phone"></div>
+        <div class="field"><label>Teléfono (opcional — te lo vamos a pedir al comprar o retirar)</label><input id="rv_phone"></div>
         ${passwordFieldHTML('rv_pass', 'Contraseña', true, 8)}
-        <div class="field"><label class="req">¿Cómo querés recibir el código de verificación?</label>
-          <select id="rv_verifymethod"><option value="gmail">Por Gmail</option><option value="phone">Por teléfono (necesitás cargar tu teléfono arriba)</option></select>
-        </div>
+        <div class="mini-help" style="margin-bottom:14px;">Te vamos a mandar un código de verificación a este Gmail para activar tu cuenta.</div>
         ${termsCheckboxHTML('rv_terms')}
         <div class="modal-foot">
           <button class="btn btn-primary" type="submit">Crear cuenta de viewer</button>
@@ -99,17 +95,15 @@ async function submitRegister(e, role) {
   e.preventDefault();
   const termsEl = document.getElementById(role === 'creator' ? 'rc_terms' : 'rv_terms');
   if (!termsEl.checked) { toast('Tenés que aceptar los Términos y la Política de Privacidad para registrarte.', true); return; }
-  const verifyMethod = document.getElementById(role === 'creator' ? 'rc_verifymethod' : 'rv_verifymethod').value;
   const payload = role === 'creator'
-    ? { role, visibleUser: rc_visible.value.trim(), name: rc_name.value.trim(), phone: rc_phone.value.trim(), email: rc_email.value.trim(), ytUser: rc_yt.value.trim(), password: rc_pass.value, acceptedTerms: true, verifyMethod }
-    : { role, name: rv_name.value.trim(), visibleUser: rv_visible.value.trim(), email: rv_email.value.trim(), phone: rv_phone.value.trim(), password: rv_pass.value, acceptedTerms: true, verifyMethod };
-  if (verifyMethod === 'phone' && !payload.phone) { toast('Para recibir el código por teléfono, primero cargá tu número.', true); return; }
+    ? { role, visibleUser: rc_visible.value.trim(), name: rc_name.value.trim(), phone: rc_phone.value.trim(), email: rc_email.value.trim(), ytUser: rc_yt.value.trim(), password: rc_pass.value, acceptedTerms: true }
+    : { role, name: rv_name.value.trim(), visibleUser: rv_visible.value.trim(), email: rv_email.value.trim(), phone: rv_phone.value.trim(), password: rv_pass.value, acceptedTerms: true };
   try {
     await Api.post('/auth/register', payload);
     renderModal(`
       <div class="modal-head"><h2>Cuenta creada</h2><button class="modal-close" onclick="closeModal()">×</button></div>
-      <div class="notice">Te vamos a mandar un código de verificación de un solo uso por ${verifyMethod === 'phone' ? 'teléfono' : 'Gmail'}.<br>Usá el botón "Verificación" en la pantalla de inicio para activar tu cuenta con ese código.</div>
-      <div class="modal-foot"><button class="btn btn-primary" onclick="openVerifyAccount()">Ir a Verificación</button></div>`);
+      <div class="notice">Te vamos a mandar un código de verificación de un solo uso por Gmail (dura 120 minutos).<br>Usá el botón "Verificación" en la pantalla de inicio para activar tu cuenta con ese código.</div>
+      <div class="modal-foot"><button class="btn btn-primary" onclick="openVerifyAccount('${payload.email}')">Ir a Verificación</button></div>`);
   } catch (err) { toast(err.message, true); }
 }
 
@@ -127,19 +121,46 @@ function openLogin() {
     </form>`);
 }
 
-function openVerifyAccount() {
+function openVerifyAccount(prefillEmail) {
   renderModal(`
     <div class="modal-head"><h2>Verificación de cuenta</h2><button class="modal-close" onclick="closeModal()">×</button></div>
-    <div class="mini-help" style="margin-bottom:16px;">Poné tu Gmail, tu contraseña, y el código de un solo uso que te mandamos para activar tu cuenta.</div>
+    <div class="mini-help" style="margin-bottom:16px;">Poné tu Gmail, tu contraseña, y el código de un solo uso que te mandamos para activar tu cuenta. El código dura 120 minutos.</div>
     <form onsubmit="submitVerifyAccount(event)">
-      <div class="field"><label class="req">Gmail</label><input id="va_email" type="email" required></div>
+      <div class="field"><label class="req">Gmail</label><input id="va_email" type="email" required value="${prefillEmail || ''}"></div>
       ${passwordFieldHTML('va_pass', 'Contraseña', true)}
       <div class="field"><label class="req">Código de verificación</label><input id="va_code" required maxlength="6" style="letter-spacing:.2em; text-align:center; font-family:'JetBrains Mono';"></div>
       <div class="modal-foot">
         <button class="btn btn-primary" type="submit">Verificar cuenta</button>
+        <button class="btn btn-ghost btn-sm" type="button" id="va_resend_btn" onclick="resendVerifyCode()">Reenviar código</button>
         <button class="btn btn-ghost btn-sm" type="button" onclick="openLogin()">Volver a iniciar sesión</button>
       </div>
     </form>`);
+}
+
+let resendCooldownInterval = null;
+async function resendVerifyCode() {
+  const email = document.getElementById('va_email').value.trim();
+  const password = document.getElementById('va_pass').value;
+  if (!email || !password) { toast('Completá tu Gmail y contraseña primero.', true); return; }
+  try {
+    const r = await Api.post('/auth/verify-account/resend', { email, password });
+    toast(r.message);
+    startResendCooldown();
+  } catch (err) { toast(err.message, true); }
+}
+function startResendCooldown() {
+  const btn = document.getElementById('va_resend_btn');
+  if (!btn) return;
+  let secs = 60;
+  btn.disabled = true;
+  if (resendCooldownInterval) clearInterval(resendCooldownInterval);
+  btn.textContent = `Reenviar código (${secs}s)`;
+  resendCooldownInterval = setInterval(() => {
+    secs--;
+    if (!document.getElementById('va_resend_btn')) { clearInterval(resendCooldownInterval); return; }
+    if (secs <= 0) { clearInterval(resendCooldownInterval); btn.disabled = false; btn.textContent = 'Reenviar código'; return; }
+    btn.textContent = `Reenviar código (${secs}s)`;
+  }, 1000);
 }
 
 async function submitVerifyAccount(e) {

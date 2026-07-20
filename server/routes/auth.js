@@ -4,6 +4,7 @@ const router = express.Router();
 const { getDB, saveDB, addLog } = require('../db');
 const { hashPassword, checkPassword, setSessionCookie, clearSessionCookie, createSession, publicAccount, requireAuth } = require('../auth');
 const { uid, genVerifyCode } = require('../util');
+const { trySendVerificationEmail } = require('../mailer');
 
 function findByEmail(db, email) {
   return db.accounts.find(a => a.email.toLowerCase() === String(email || '').toLowerCase());
@@ -21,14 +22,13 @@ function generateUniqueViewerName(db) {
 }
 
 // ---- Registro ----
-router.post('/register', (req, res) => {
-  const { role, name, visibleUser, email, phone, ytUser, password, acceptedTerms, verifyMethod } = req.body || {};
+router.post('/register', async (req, res) => {
+  const { role, name, visibleUser, email, phone, ytUser, password, acceptedTerms } = req.body || {};
   if (!['creator', 'viewer'].includes(role)) return res.status(400).json({ error: 'Rol inválido.' });
   if (!name || !email || !password) return res.status(400).json({ error: 'Faltan campos obligatorios.' });
   if (password.length < 8) return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres.' });
   if (!acceptedTerms) return res.status(400).json({ error: 'Tenés que aceptar los Términos y la Política de Privacidad para registrarte.' });
   if (role === 'creator' && !visibleUser) return res.status(400).json({ error: 'Elegí un usuario visible.' });
-  if (role === 'creator' && !phone) return res.status(400).json({ error: 'El teléfono es obligatorio para creadores.' });
 
   const db = getDB();
   if (findByEmail(db, email)) return res.status(409).json({ error: 'Ese Gmail ya tiene una cuenta registrada.' });
@@ -43,7 +43,7 @@ router.post('/register', (req, res) => {
     finalVisibleUser = String(visibleUser).trim();
   }
 
-  const method = (verifyMethod === 'phone' && phone) ? 'phone' : 'gmail';
+  const method = 'gmail';
   const acc = {
     id: uid(role),
     role,
@@ -63,20 +63,28 @@ router.post('/register', (req, res) => {
     createdAt: Date.now()
   };
   db.accounts.push(acc);
-  db.verifyRequests.push({ id: uid('vr'), accountId: acc.id, method, target: method === 'phone' ? acc.phone : acc.email, purpose: 'account', createdAt: Date.now() });
-  addLog(db, { type: 'user', message: `Nueva cuenta registrada: ${acc.visibleUser} (${role === 'creator' ? 'creador' : 'viewer'}, ${acc.email}) — pendiente de verificación por ${method === 'phone' ? 'teléfono' : 'Gmail'}`, accountName: acc.visibleUser });
+  db.verifyRequests.push({ id: uid('vr'), accountId: acc.id, method: 'gmail', target: acc.email, purpose: 'account', createdAt: Date.now() });
+  addLog(db, { type: 'user', message: `Nueva cuenta registrada: ${acc.visibleUser} (${role === 'creator' ? 'creador' : 'viewer'}, ${acc.email}) — pendiente de verificación por Gmail`, accountName: acc.visibleUser });
   saveDB(db);
-  res.json({ ok: true, message: 'Cuenta creada. Te vamos a mandar un código de verificación para activarla.', assignedUsername: role === 'viewer' ? finalVisibleUser : undefined });
+  const sent = await trySendVerificationEmail(acc.email, acc.verifyCode);
+  res.json({ ok: true, message: sent ? 'Cuenta creada. Te mandamos un código de verificación por Gmail.' : 'Cuenta creada. Te vamos a mandar un código de verificación para activarla.', assignedUsername: role === 'viewer' ? finalVisibleUser : undefined });
 });
 
 // ---- Verificación de cuenta con código de un solo uso (Gmail o teléfono) ----
+const VERIFY_CODE_MINUTES = 120;
+const RESEND_COOLDOWN_SECONDS = 60;
+
 router.post('/verify-account', (req, res) => {
   const { email, password, code } = req.body || {};
   const db = getDB();
   const acc = findByEmail(db, email);
   if (!acc || !checkPassword(password || '', acc.passwordHash)) return res.status(401).json({ error: 'Gmail o contraseña incorrectos.' });
   if (acc.status === 'blocked') return res.status(403).json({ error: 'Tu cuenta está bloqueada.' });
-  if (!acc.verifyCode || acc.verifyCode !== String(code || '').trim()) return res.status(400).json({ error: 'El código de verificación no coincide.' });
+  if (!acc.verifyCode) return res.status(400).json({ error: 'No tenés un código pendiente. Pedí uno nuevo con "Reenviar código".' });
+  if (Date.now() - acc.verifyCodeAt > VERIFY_CODE_MINUTES * 60 * 1000) {
+    return res.status(400).json({ error: 'code_expired', message: 'Ese código venció (dura 120 minutos). Pedí uno nuevo con "Reenviar código".' });
+  }
+  if (acc.verifyCode !== String(code || '').trim()) return res.status(400).json({ error: 'El código de verificación no coincide.' });
 
   acc.status = 'approved';
   acc.verifyCode = null;
@@ -87,14 +95,57 @@ router.post('/verify-account', (req, res) => {
   res.json({ ok: true, message: 'Cuenta verificada. Ya podés iniciar sesión.' });
 });
 
+// ---- Reenviar código de verificación (cooldown de 1 minuto) ----
+router.post('/verify-account/resend', async (req, res) => {
+  const { email, password } = req.body || {};
+  const db = getDB();
+  const acc = findByEmail(db, email);
+  if (!acc || !checkPassword(password || '', acc.passwordHash)) return res.status(401).json({ error: 'Gmail o contraseña incorrectos.' });
+  if (acc.status !== 'pending') return res.status(400).json({ error: 'Esta cuenta no está esperando verificación.' });
+  if (acc.verifyCodeAt && Date.now() - acc.verifyCodeAt < RESEND_COOLDOWN_SECONDS * 1000) {
+    const waitSec = Math.ceil((RESEND_COOLDOWN_SECONDS * 1000 - (Date.now() - acc.verifyCodeAt)) / 1000);
+    return res.status(429).json({ error: `Esperá ${waitSec}s antes de pedir otro código.` });
+  }
+  acc.verifyCode = genVerifyCode();
+  acc.verifyCodeAt = Date.now();
+  db.verifyRequests = db.verifyRequests.filter(r => r.accountId !== acc.id);
+  db.verifyRequests.push({ id: uid('vr'), accountId: acc.id, method: 'gmail', target: acc.email, purpose: 'account', createdAt: Date.now() });
+  saveDB(db);
+  const sent = await trySendVerificationEmail(acc.email, acc.verifyCode);
+  res.json({ ok: true, message: sent ? 'Te mandamos un código nuevo por Gmail.' : 'Código nuevo generado — el administrador te lo va a enviar en breve.' });
+});
+
 // ---- Login ----
+const FAILED_ATTEMPT_WINDOW_MIN = 10;
+const MAX_FAILED_ATTEMPTS = 5;
+const IP_BAN_MINUTES = 10;
+
 router.post('/login', async (req, res) => {
   const { email, password } = req.body || {};
   const db = getDB();
   const ip = (req.headers['x-forwarded-for'] || req.ip || '').toString().split(',')[0].trim();
+  const now = Date.now();
+
+  db.ipBans = db.ipBans.filter(b => b.bannedUntil > now);
+  const activeBan = ip && db.ipBans.find(b => b.ip === ip);
+  if (activeBan) {
+    const waitMin = Math.ceil((activeBan.bannedUntil - now) / 60000);
+    return res.status(429).json({ error: `Demasiados intentos fallidos desde esta conexión. Probá de nuevo en ${waitMin} minuto(s).` });
+  }
+
   const acc = findByEmail(db, email);
   if (!acc || !checkPassword(password || '', acc.passwordHash)) {
     addLog(db, { type: 'alert', message: `Intento de inicio de sesión fallido con el Gmail "${email || '—'}" (contraseña incorrecta o cuenta inexistente)`, accountName: email || null, ip });
+    if (ip) {
+      db.loginAttempts = db.loginAttempts.filter(a => now - a.ts < FAILED_ATTEMPT_WINDOW_MIN * 60 * 1000);
+      db.loginAttempts.push({ ip, ts: now });
+      const recentForIp = db.loginAttempts.filter(a => a.ip === ip).length;
+      if (recentForIp >= MAX_FAILED_ATTEMPTS) {
+        db.ipBans.push({ ip, bannedUntil: now + IP_BAN_MINUTES * 60 * 1000 });
+        addLog(db, { type: 'alert', message: `IP baneada por ${IP_BAN_MINUTES} minutos tras ${recentForIp} contraseñas incorrectas seguidas`, accountName: null, ip });
+        db.loginAttempts = db.loginAttempts.filter(a => a.ip !== ip);
+      }
+    }
     saveDB(db);
     return res.status(401).json({ error: 'Gmail o contraseña incorrectos.' });
   }

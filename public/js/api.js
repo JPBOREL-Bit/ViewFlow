@@ -19,7 +19,7 @@ async function api(method, path, body) {
     throw new Error(data.message || 'En mantenimiento.');
   }
   if (!res.ok) {
-    const err = new Error(data.error || 'Error de red');
+    const err = new Error(data.message || data.error || 'Error de red');
     err.status = res.status;
     err.data = data;
     throw err;

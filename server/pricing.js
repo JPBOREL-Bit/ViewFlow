@@ -26,21 +26,23 @@ function purchaseQuote(credits, settings) {
   const baseUsd = creditsToUsd(credits, settings);
   const totalUsd = baseUsd * (1 + settings.purchaseTaxPct / 100);
   const taxCredits = Math.round(credits * settings.purchaseTaxPct / 100);
+  const rate = settings.usdRateVenta || settings.usdRate;
   return {
     credits,
     usd: Number(totalUsd.toFixed(2)),
-    ars: Math.round(totalUsd * settings.usdRate),
+    ars: Math.round(totalUsd * rate),
     taxCredits
   };
 }
 
 function withdrawQuote(credits, settings) {
   const netCredits = credits * (1 - settings.withdrawTaxPct / 100);
+  const rate = settings.usdRateCompra || settings.usdRate;
   return {
     credits,
     netCredits: Math.round(netCredits * 100) / 100,
     usd: Number((netCredits * settings.creditToUsd).toFixed(2)),
-    ars: Math.round(netCredits * settings.creditToUsd * settings.usdRate),
+    ars: Math.round(netCredits * settings.creditToUsd * rate),
     taxCredits: Math.round((credits - netCredits) * 100) / 100
   };
 }

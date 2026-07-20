@@ -20,7 +20,9 @@ async function fetchUsdRate() {
     if (!res.ok) return;
     const data = await res.json();
     if (data && typeof data.venta === 'number' && data.venta > 0) {
-      db.settings.usdRate = data.venta;
+      db.settings.usdRateVenta = data.venta; // se usa en la Tienda (compra de créditos)
+      db.settings.usdRateCompra = data.compra || data.venta; // se usa en Retiros
+      db.settings.usdRate = data.venta; // valor de referencia general (compatibilidad)
       db.settings.usdRateUpdatedAt = Date.now();
       saveDB(db);
     }

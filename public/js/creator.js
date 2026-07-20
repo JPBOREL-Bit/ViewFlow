@@ -39,10 +39,10 @@ async function boot() {
   renderSupportWidget();
 }
 
-async function renderPage() {
+async function renderPage(silent) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.page === currentPage));
   const main = document.getElementById('mainContent');
-  main.innerHTML = '<div class="empty-state">Cargando...</div>';
+  if (!silent) main.innerHTML = '<div class="empty-state">Cargando...</div>';
   try {
     if (currentPage === 'dashboard') await renderDashboard(main);
     else if (currentPage === 'create') renderCreate(main);
@@ -53,8 +53,8 @@ async function renderPage() {
     else if (currentPage === 'donate') await renderDonate(main);
     else if (currentPage === 'profile') renderProfile(main);
     else if (currentPage === 'devices') await renderDevices(main);
-  } catch (e) { main.innerHTML = `<div class="empty-state">${e.message}</div>`; }
-  main.style.animation = 'none'; void main.offsetWidth; main.style.animation = '';
+  } catch (e) { if (!silent) main.innerHTML = `<div class="empty-state">${e.message}</div>`; }
+  if (!silent) { main.style.animation = 'none'; void main.offsetWidth; main.style.animation = ''; }
 }
 
 async function renderDashboard(main) {
@@ -396,4 +396,4 @@ async function saveProfile(e) {
 boot();
 
 const CREATOR_SAFE_REFRESH_PAGES = ['dashboard', 'mine', 'finished', 'purchases'];
-window.__vfSilentRefresh = () => { if (ME && CREATOR_SAFE_REFRESH_PAGES.includes(currentPage)) renderPage(); };
+window.__vfSilentRefresh = () => { if (ME && CREATOR_SAFE_REFRESH_PAGES.includes(currentPage)) renderPage(true); };

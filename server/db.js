@@ -25,6 +25,8 @@ function defaultDB() {
     activityLog: [],            // { id, accountId, ts, text } — avisos internos para el admin (ej. cambios de perfil)
     settings: {
       usdRate: 1200,
+      usdRateVenta: 1200,
+      usdRateCompra: 1180,
       creditToUsd: 0.01,
       purchaseTaxPct: 15,
       withdrawTaxPct: 15,
@@ -40,7 +42,9 @@ function defaultDB() {
       maintenanceMode: false,
       maintenanceMessage: 'ViewFlow se encuentra en mantenimiento. Volvé a intentarlo en un rato.'
     },
-    sessions: [] // { id, accountId, device, ip, location, trusted, createdAt, lastActiveAt }
+    sessions: [], // { id, accountId, device, ip, location, trusted, createdAt, lastActiveAt }
+    loginAttempts: [], // { ip, ts } — intentos fallidos recientes, para el baneo automático
+    ipBans: [] // { ip, bannedUntil }
   };
 }
 
@@ -52,6 +56,8 @@ function migrate(db) {
   if (!Array.isArray(db.verifyRequests)) db.verifyRequests = [];
   if (!Array.isArray(db.activityLog)) db.activityLog = [];
   if (!Array.isArray(db.sessions)) db.sessions = [];
+  if (!Array.isArray(db.loginAttempts)) db.loginAttempts = [];
+  if (!Array.isArray(db.ipBans)) db.ipBans = [];
   (db.accounts || []).forEach(a => {
     if (!a.theme) a.theme = 'light';
     if (!Array.isArray(a.ledger)) a.ledger = [];

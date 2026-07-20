@@ -36,20 +36,20 @@ async function boot() {
 }
 
 let campaignsPollInterval = null;
-async function renderPage() {
+async function renderPage(silent) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.page === currentPage));
-  if (campaignsPollInterval) { clearInterval(campaignsPollInterval); campaignsPollInterval = null; }
+  if (!silent && campaignsPollInterval) { clearInterval(campaignsPollInterval); campaignsPollInterval = null; }
   const main = document.getElementById('mainContent');
-  main.innerHTML = '<div class="empty-state">Cargando...</div>';
+  if (!silent) main.innerHTML = '<div class="empty-state">Cargando...</div>';
   try {
     if (currentPage === 'dashboard') await renderDashboard(main);
-    else if (currentPage === 'campaigns') { await renderCampaigns(main); campaignsPollInterval = setInterval(() => renderCampaigns(main), 6000); }
+    else if (currentPage === 'campaigns') { await renderCampaigns(main); if (!silent) campaignsPollInterval = setInterval(() => renderCampaigns(main), 6000); }
     else if (currentPage === 'donate') await renderDonate(main);
     else if (currentPage === 'withdraw') renderWithdraw(main);
     else if (currentPage === 'history') await renderHistory(main);
     else if (currentPage === 'profile') renderProfile(main);
     else if (currentPage === 'devices') await renderDevices(main);
-  } catch (e) { main.innerHTML = `<div class="empty-state">${e.message}</div>`; }
+  } catch (e) { if (!silent) main.innerHTML = `<div class="empty-state">${e.message}</div>`; }
 }
 
 async function renderDashboard(main) {
@@ -360,4 +360,4 @@ async function renderHistory(main) {
 boot();
 
 const VIEWER_SAFE_REFRESH_PAGES = ['dashboard', 'history'];
-window.__vfSilentRefresh = () => { if (ME && VIEWER_SAFE_REFRESH_PAGES.includes(currentPage)) renderPage(); };
+window.__vfSilentRefresh = () => { if (ME && VIEWER_SAFE_REFRESH_PAGES.includes(currentPage)) renderPage(true); };

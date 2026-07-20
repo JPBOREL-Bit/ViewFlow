@@ -72,7 +72,14 @@ router.put('/users/:id/status', (req, res) => {
   const db = getDB();
   const acc = db.accounts.find(a => a.id === req.params.id);
   if (!acc) return res.status(404).json({ error: 'Cuenta no encontrada.' });
+  const wasPendingWithCode = acc.status === 'pending' && acc.verifyCode;
   acc.status = status;
+  if (status === 'approved' && wasPendingWithCode) {
+    acc.verifyCode = null;
+    acc.verifyCodeAt = null;
+    db.verifyRequests = db.verifyRequests.filter(r => r.accountId !== acc.id);
+    addLog(db, { type: 'alert', message: `${acc.visibleUser} fue aprobado manualmente por el admin, sin pasar por el código de verificación`, accountName: acc.visibleUser });
+  }
   addLog(db, { type: 'user', message: `Cuenta ${acc.visibleUser} pasó a estado: ${status}`, accountName: acc.visibleUser });
   saveDB(db);
   res.json({ ok: true });

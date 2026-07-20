@@ -63,12 +63,12 @@ async function boot() {
   setInterval(refreshNavIndicators, 8000);
 }
 
-async function renderPage() {
+async function renderPage(silent) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.page === currentPage));
   const main = document.getElementById('mainContent');
-  main.innerHTML = '<div class="empty-state">Cargando...</div>';
+  if (!silent) main.innerHTML = '<div class="empty-state">Cargando...</div>';
   const renderers = { overview: renderOverview, users: renderUsers, creators: renderCreatorsSection, viewers: renderViewersSection, campaigns: renderCampaigns, purchases: renderPurchases, withdrawals: renderWithdrawals, donations: renderDonations, verify: renderVerify, messages: renderMessages, taxes: renderTaxes, settings: renderSettings, devices: renderDevices, logs: renderLogs };
-  try { await renderers[currentPage](main); } catch (e) { main.innerHTML = `<div class="empty-state">${e.message}</div>`; }
+  try { await renderers[currentPage](main); } catch (e) { if (!silent) main.innerHTML = `<div class="empty-state">${e.message}</div>`; }
 }
 
 async function renderOverview(main) {
@@ -123,11 +123,11 @@ async function renderUsers(main) {
     <div class="page-head"><div><h1>Usuarios</h1></div></div>
     ${pending.length ? `
     <div class="section-card table-wrap" style="margin-bottom:20px;">
-      <h3>Pendientes de aprobar</h3>
+      <h3>Pendientes de verificación por código</h3>
+      <div class="mini-help" style="margin-bottom:10px;">Estas cuentas solo se activan cuando el usuario ingresa su código de verificación en "Verificación". Podés rechazar una si es fraudulenta o duplicada.</div>
       <table><thead><tr><th>Nombre</th><th>Rol</th><th>Gmail</th><th>Acciones</th></tr></thead>
       <tbody>${pending.map(a => `<tr><td>${a.visibleUser}</td><td>${a.role}</td><td>${a.email}</td>
-        <td><button class="btn btn-sm btn-teal" onclick="setStatus('${a.id}','approved')">Aprobar</button>
-        <button class="btn btn-sm btn-danger" onclick="setStatus('${a.id}','rejected')">Rechazar</button></td></tr>`).join('')}
+        <td><button class="btn btn-sm btn-danger" onclick="setStatus('${a.id}','rejected')">Rechazar</button></td></tr>`).join('')}
       </tbody></table>
     </div>` : ''}
     <div class="section-card table-wrap">
@@ -405,7 +405,11 @@ async function renderSettings(main) {
       <h3>Economía</h3>
       <form onsubmit="saveSettings(event)">
         <div class="grid-2">
-          <div class="field"><label>Dólar (ARS)</label><input id="st_usd" type="number" value="${s.usdRate}"></div>
+          <div class="field"><label>Dólar venta — ARS (Tienda)</label><input id="st_usdventa" type="number" value="${s.usdRateVenta || s.usdRate}"></div>
+          <div class="field"><label>Dólar compra — ARS (Retiros)</label><input id="st_usdcompra" type="number" value="${s.usdRateCompra || s.usdRate}"></div>
+        </div>
+        <div class="mini-help" style="margin-bottom:14px;">Se actualizan solos cada 5 minutos desde una cotización real (dolarapi.com). Podés editarlos acá si necesitás forzar un valor puntual.</div>
+        <div class="grid-2">
           <div class="field"><label>1 crédito en USD</label><input id="st_credit" type="number" step="0.01" value="${s.creditToUsd}"></div>
         </div>
         <div class="grid-2">
@@ -479,8 +483,10 @@ async function toggleMaintenance(enabled) {
 }
 async function saveSettings(e) {
   e.preventDefault();
+  const venta = Number(st_usdventa.value);
+  const compra = Number(st_usdcompra.value);
   await Api.put('/admin/settings', {
-    usdRate: Number(st_usd.value), creditToUsd: Number(st_credit.value),
+    usdRateVenta: venta, usdRateCompra: compra, usdRate: venta, creditToUsd: Number(st_credit.value),
     purchaseTaxPct: Number(st_ptax.value), withdrawTaxPct: Number(st_wtax.value),
     minWithdrawCredits: Number(st_minwd.value), minCampaignViews: Number(st_minviews.value),
     paymentAlias: st_alias.value
@@ -507,4 +513,4 @@ async function submitReset(e) {
 boot();
 
 const ADMIN_SAFE_REFRESH_PAGES = ['overview', 'users', 'creators', 'viewers', 'campaigns', 'purchases', 'withdrawals', 'donations', 'verify', 'taxes', 'logs'];
-window.__vfSilentRefresh = () => { if (ME && ADMIN_SAFE_REFRESH_PAGES.includes(currentPage)) renderPage(); };
+window.__vfSilentRefresh = () => { if (ME && ADMIN_SAFE_REFRESH_PAGES.includes(currentPage)) renderPage(true); };

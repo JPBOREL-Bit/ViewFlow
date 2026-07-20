@@ -29,7 +29,7 @@ router.get('/packages', requireAuth(), (req, res) => {
       minPurchase: 100,
       paymentAlias: db.settings.paymentAlias,
       paymentContactEmail: db.settings.paymentContactEmail,
-      usdRate: db.settings.usdRate,
+      usdRate: db.settings.usdRateVenta || db.settings.usdRate,
       usdRateUpdatedAt: db.settings.usdRateUpdatedAt
     }
   });
