@@ -288,13 +288,33 @@ async function renderLogs(main, query, type) {
       ${logs.length === 0 ? '<div class="empty-state">No hay eventos que coincidan con la búsqueda.</div>' : ''}
     </div>
     <div class="section-card" style="margin-top:16px; max-width:560px;">
-      <h3 style="margin-bottom:10px;">Agregar nota manual</h3>
-      <div class="mini-help" style="margin-bottom:12px;">Para dejar registrado algo vos mismo (ej. "Llamé al proveedor de hosting", "Confirmé el pago por WhatsApp con X").</div>
+      <h3 style="margin-bottom:10px;">Comandos rápidos</h3>
+      <div class="mini-help" style="margin-bottom:12px;">Cada uno deja una entrada ya armada en el log, sin tener que escribirla.</div>
+      <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px;">
+        <button class="btn btn-ghost btn-sm" onclick="quickLog('Alerta revisada por el admin')">Marcar como revisado</button>
+        <button class="btn btn-ghost btn-sm" onclick="quickLogPrompt('Registrar contacto con usuario', 'Contacté al usuario por: ')">Registrar contacto con usuario</button>
+        <button class="btn btn-ghost btn-sm" onclick="quickLogPrompt('Pago confirmado manualmente', 'Confirmé el pago manualmente: ')">Pago confirmado manualmente</button>
+        <button class="btn btn-danger btn-sm" onclick="quickLogPrompt('Incidente de seguridad', 'Incidente detectado: ', true)">Registrar incidente de seguridad</button>
+      </div>
+      <h3 style="margin-bottom:10px;">Nota libre</h3>
       <div style="display:flex; gap:8px;">
         <input id="manualLogNote" placeholder="Escribí la nota...">
         <button class="btn btn-primary btn-sm" onclick="addManualLogNote()">Guardar</button>
       </div>
     </div>`;
+}
+async function quickLog(message) {
+  try { await Api.post('/admin/logs/note', { message }); toast('Agregado al log.'); searchLogs(); }
+  catch (err) { toast(err.message, true); }
+}
+async function quickLogPrompt(label, prefix, asAlert) {
+  const extra = prompt(label + ' — detalle:');
+  if (extra === null) return;
+  try {
+    await Api.post('/admin/logs/note', { message: prefix + extra, alert: !!asAlert });
+    toast('Agregado al log.');
+    searchLogs();
+  } catch (err) { toast(err.message, true); }
 }
 async function addManualLogNote() {
   const input = document.getElementById('manualLogNote');

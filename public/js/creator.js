@@ -233,9 +233,9 @@ async function submitDeleteCampaign(e, id) {
 }
 
 async function renderStore(main) {
-  const { packages, methods, banks, settings } = await Api.get('/store/packages');
+  const { packages, banks, settings } = await Api.get('/store/packages');
   main.innerHTML = `
-    <div class="page-head"><div><h1>Tienda</h1><div class="ps">Elegí un paquete o armá el tuyo — el precio ya incluye el impuesto</div></div></div>
+    <div class="page-head"><div><h1>Tienda</h1><div class="ps">Elegí un paquete de créditos — el precio ya incluye el impuesto</div></div></div>
     <div class="pkg-grid" id="pkgGrid" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:14px; margin-bottom:28px;">
       ${packages.map(p => `<button type="button" class="pkg-card" data-credits="${p.credits}" onclick="selectPackage(${p.credits})" style="background:var(--panel); border:1px solid var(--border-soft); border-radius:14px; padding:18px 14px; text-align:center; cursor:pointer; transition:all .15s ease;">
         <div class="mono" style="font-weight:700; color:var(--gold); font-size:19px;">${p.credits} cr</div>
@@ -244,63 +244,50 @@ async function renderStore(main) {
       </button>`).join('')}
     </div>
     <div class="section-card" style="max-width:540px;">
-      <h3 style="margin-bottom:16px;">Paquete personalizado</h3>
-      <div class="field"><label class="req">Cantidad de créditos</label><input id="custom_credits" type="number" min="100" step="1" value="100" oninput="selectPackage(parseInt(this.value||100))"></div>
+      <h3 style="margin-bottom:16px;" id="selectedPkgTitle">Elegí un paquete arriba</h3>
       <div class="stat-grid" style="margin:16px 0;">
-        <div class="stat-card"><div class="sl">Créditos seleccionados</div><div class="sv gold" id="sel_credits">100 cr</div></div>
-        <div class="stat-card"><div class="sl">Total a pagar (impuesto incluido)</div><div class="sv" id="sel_price">$0.00</div></div>
+        <div class="stat-card"><div class="sl">Créditos seleccionados</div><div class="sv gold" id="sel_credits">—</div></div>
+        <div class="stat-card"><div class="sl">Total a pagar (impuesto incluido)</div><div class="sv" id="sel_price">—</div></div>
       </div>
       <form onsubmit="submitPurchase(event)">
         <div class="field"><label class="req">Nombre del titular que va a pagar</label><input id="p_holder" required placeholder="Nombre y apellido"></div>
-        <div class="field"><label class="req">Método de pago</label>
-          <select id="p_method" onchange="onMethodChange()">
-            ${methods.map(m => `<option value="${m}">${m}</option>`).join('')}
-          </select>
-        </div>
-        <div class="field" id="bankCompanyWrap"><label class="req">¿Con qué compañía vas a transferir?</label>
+        <div class="field"><label class="req">¿Con qué compañía vas a transferir?</label>
           <select id="p_bank">${(banks || []).map(b => `<option value="${b}">${b}</option>`).join('')}</select>
         </div>
         <div class="field"><label>Alias / CBU para transferir</label><input value="${settings.paymentAlias}" disabled></div>
-        <div class="notice hidden" id="bankTransferNote" style="margin-bottom:16px;">Una vez que hagas la transferencia, mandá el comprobante por Gmail a <b>${settings.paymentContactEmail}</b> para que se apruebe más rápido.</div>
+        <div class="notice" style="margin-bottom:16px;">Pago solo por transferencia bancaria. Una vez que transfieras, mandá el comprobante por Gmail a <b>${settings.paymentContactEmail}</b> — <b>tiene que ser desde el mismo Gmail con el que te registraste en ViewFlow</b>, así lo podemos confirmar más rápido.</div>
         <div class="mini-help" style="margin-bottom:16px;">La solicitud vence en 1 hora si no se confirma el pago.</div>
-        <button class="btn btn-primary" type="submit">Enviar pedido de compra</button>
+        <button class="btn btn-primary" type="submit" id="submitPurchaseBtn" disabled>Elegí un paquete primero</button>
       </form>
     </div>`;
-  selectPackage(100);
-  onMethodChange();
 }
-function onMethodChange() {
-  const method = document.getElementById('p_method').value;
-  const isTransfer = method === 'Transferencia bancaria';
-  document.getElementById('bankTransferNote').classList.toggle('hidden', !isTransfer);
-  document.getElementById('bankCompanyWrap').classList.toggle('hidden', !isTransfer);
-}
-let selectedCredits = 100;
+let selectedCredits = null;
 async function selectPackage(credits) {
   selectedCredits = credits;
-  const customInput = document.getElementById('custom_credits');
-  if (customInput) customInput.value = credits;
   document.querySelectorAll('.pkg-card').forEach(el => {
     const active = Number(el.dataset.credits) === credits;
     el.style.borderColor = active ? 'var(--gold)' : 'var(--border-soft)';
     el.style.background = active ? 'var(--gold-dim)' : 'var(--panel)';
   });
   const q = await Api.get('/store/quote?credits=' + credits);
+  document.getElementById('selectedPkgTitle').textContent = `Comprando ${credits} créditos`;
   document.getElementById('sel_credits').textContent = credits + ' cr';
   document.getElementById('sel_price').textContent = `$${q.usd.toFixed(2)} USD · $${fmtArs(q.ars)} ARS`;
+  const btn = document.getElementById('submitPurchaseBtn');
+  btn.disabled = false;
+  btn.textContent = 'Enviar pedido de compra';
 }
 async function submitPurchase(e) {
   e.preventDefault();
-  const method = document.getElementById('p_method').value;
+  if (!selectedCredits) { toast('Elegí un paquete primero.', true); return; }
   try {
-    const { note, purchase } = await Api.post('/store/purchases', {
+    const { purchase } = await Api.post('/store/purchases', {
       credits: selectedCredits,
-      method,
-      bankCompany: method === 'Transferencia bancaria' ? document.getElementById('p_bank').value : undefined,
+      method: 'Transferencia bancaria',
+      bankCompany: document.getElementById('p_bank').value,
       holderName: document.getElementById('p_holder').value.trim()
     });
-    if (method === 'Transferencia bancaria' && purchase) showPaymentQr(purchase);
-    else { toast(note || 'Pedido enviado.'); goTo('purchases'); }
+    showPaymentQr(purchase);
   } catch (err) { toast(err.message, true); }
 }
 

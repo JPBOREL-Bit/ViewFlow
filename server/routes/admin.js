@@ -284,10 +284,10 @@ router.get('/logs', (req, res) => {
 // Nota manual que el propio admin quiere dejar anotada en el log, para su
 // propio registro (no la genera ninguna acción automática del sistema).
 router.post('/logs/note', (req, res) => {
-  const { message } = req.body || {};
+  const { message, alert } = req.body || {};
   if (!message || !message.trim()) return res.status(400).json({ error: 'La nota no puede estar vacía.' });
   const db = getDB();
-  addLog(db, { type: 'system', message: `Nota del admin: ${message.trim()}`, accountName: req.account.visibleUser });
+  addLog(db, { type: alert ? 'alert' : 'system', message: `Nota del admin: ${message.trim()}`, accountName: req.account.visibleUser });
   saveDB(db);
   res.json({ ok: true });
 });

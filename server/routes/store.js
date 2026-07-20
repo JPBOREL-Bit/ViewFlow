@@ -7,7 +7,8 @@ const { uid } = require('../util');
 const { purchaseQuote } = require('../pricing');
 
 const ONE_HOUR = 60 * 60 * 1000;
-const PAYMENT_METHODS = ['Transferencia bancaria', 'Tarjeta de débito'];
+const PACKAGE_OPTIONS = [100, 250, 500, 750, 1000, 1500, 2000, 2500, 3000, 4000, 5000];
+const PAYMENT_METHODS = ['Transferencia bancaria'];
 const BANK_COMPANIES = ['BNA', 'Brubank', 'Naranja X', 'Mercado Pago', 'Ualá'];
 
 // Purga solicitudes vencidas (más de 1h sin aprobar). Se llama en cada
@@ -21,7 +22,7 @@ function purgeExpired(db) {
 
 router.get('/packages', requireAuth(), (req, res) => {
   const db = getDB();
-  const packages = [100, 250, 500, 750, 1000, 1500, 2000, 2500, 3000, 4000, 5000]
+  const packages = PACKAGE_OPTIONS
     .map(c => purchaseQuote(c, db.settings));
   res.json({
     packages,
@@ -48,7 +49,7 @@ router.post('/purchases', requireAuth('creator'), (req, res) => {
   const db = getDB();
   purgeExpired(db);
   const c = Number(credits);
-  if (!Number.isInteger(c) || c < 100) return res.status(400).json({ error: 'El mínimo de compra es 100 créditos.' });
+  if (!PACKAGE_OPTIONS.includes(c)) return res.status(400).json({ error: 'Elegí uno de los paquetes de créditos disponibles.' });
   if (!holderName) return res.status(400).json({ error: 'Falta el nombre del titular que va a pagar.' });
   const chosenMethod = PAYMENT_METHODS.includes(method) ? method : PAYMENT_METHODS[0];
   if (chosenMethod === 'Transferencia bancaria' && !BANK_COMPANIES.includes(bankCompany)) {

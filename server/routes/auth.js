@@ -71,7 +71,7 @@ router.post('/register', async (req, res) => {
 });
 
 // ---- Verificación de cuenta con código de un solo uso (Gmail o teléfono) ----
-const VERIFY_CODE_MINUTES = 120;
+const VERIFY_CODE_MINUTES = 10;
 const RESEND_COOLDOWN_SECONDS = 60;
 
 router.post('/verify-account', (req, res) => {

@@ -102,7 +102,7 @@ async function submitRegister(e, role) {
     await Api.post('/auth/register', payload);
     renderModal(`
       <div class="modal-head"><h2>Cuenta creada</h2><button class="modal-close" onclick="closeModal()">×</button></div>
-      <div class="notice">Te vamos a mandar un código de verificación de un solo uso por Gmail (dura 120 minutos).<br>Usá el botón "Verificación" en la pantalla de inicio para activar tu cuenta con ese código.</div>
+      <div class="notice">Te vamos a mandar un código de verificación de un solo uso por Gmail (dura 10 minutos).<br>Usá el botón "Verificación" en la pantalla de inicio para activar tu cuenta con ese código.</div>
       <div class="modal-foot"><button class="btn btn-primary" onclick="openVerifyAccount('${payload.email}')">Ir a Verificación</button></div>`);
   } catch (err) { toast(err.message, true); }
 }
@@ -124,7 +124,7 @@ function openLogin() {
 function openVerifyAccount(prefillEmail) {
   renderModal(`
     <div class="modal-head"><h2>Verificación de cuenta</h2><button class="modal-close" onclick="closeModal()">×</button></div>
-    <div class="mini-help" style="margin-bottom:16px;">Poné tu Gmail, tu contraseña, y el código de un solo uso que te mandamos para activar tu cuenta. El código dura 120 minutos.</div>
+    <div class="mini-help" style="margin-bottom:16px;">Poné tu Gmail, tu contraseña, y el código de un solo uso que te mandamos para activar tu cuenta. El código dura 10 minutos.</div>
     <form onsubmit="submitVerifyAccount(event)">
       <div class="field"><label class="req">Gmail</label><input id="va_email" type="email" required value="${prefillEmail || ''}"></div>
       ${passwordFieldHTML('va_pass', 'Contraseña', true)}

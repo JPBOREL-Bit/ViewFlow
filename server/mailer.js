@@ -32,8 +32,8 @@ async function trySendVerificationEmail(toEmail, code) {
       from: `ViewFlow <${process.env.GMAIL_USER}>`,
       to: toEmail,
       subject: 'Tu código de verificación de ViewFlow',
-      text: `Tu código de verificación es: ${code}\n\nDura 120 minutos. Si no lo pediste vos, ignorá este mensaje.`,
-      html: `<div style="font-family:sans-serif;"><p>Tu código de verificación es:</p><p style="font-size:28px; font-weight:700; letter-spacing:4px;">${code}</p><p style="color:#666; font-size:13px;">Dura 120 minutos. Si no lo pediste vos, ignorá este mensaje.</p></div>`
+      text: `Tu código de verificación es: ${code}\n\nDura 10 minutos. Si no lo pediste vos, ignorá este mensaje.`,
+      html: `<div style="font-family:sans-serif;"><p>Tu código de verificación es:</p><p style="font-size:28px; font-weight:700; letter-spacing:4px;">${code}</p><p style="color:#666; font-size:13px;">Dura 10 minutos. Si no lo pediste vos, ignorá este mensaje.</p></div>`
     });
     return true;
   } catch (e) {
