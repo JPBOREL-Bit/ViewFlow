@@ -73,24 +73,12 @@ async function renderDashboard(main) {
       <div class="stat-card"><div class="sl">Créditos donados</div><div class="sv">${fmtCr(creditsDonated)}</div></div>
       <div class="stat-card"><div class="sl">Créditos ganados</div><div class="sv teal">${fmtCr(creditsEarned)}</div></div>
     </div>
-    <div class="ad-slot ad-slot-banner" data-ad-zone="viewer-dashboard">
-      <ins class="adsbygoogle"
-           style="display:block"
-           data-ad-client="ca-pub-8545340767144593"
-           data-ad-slot="6688850781"
-           data-ad-format="auto"
-           data-full-width-responsive="true"></ins>
-    </div>`;
-  renderAdSense(main);
-}
-
-
-function renderAdSense(container) {
-  if (!window.adsbygoogle) window.adsbygoogle = [];
-  const slots = container.querySelectorAll('.adsbygoogle');
-  slots.forEach(() => {
-    try { (window.adsbygoogle = window.adsbygoogle || []).push({}); } catch (e) {}
-  });
+    <div class="ad-slot-banner"><ins class="adsbygoogle"
+     style="display:block; width:100%;"
+     data-ad-client="ca-pub-8545340767144593"
+     data-ad-slot="6688850781"
+     data-ad-format="auto"
+     data-full-width-responsive="true"></ins><script>(adsbygoogle = window.adsbygoogle || []).push({});</script></div>`;
 }
 
 async function renderCampaigns(main) {
