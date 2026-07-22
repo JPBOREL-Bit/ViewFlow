@@ -132,16 +132,35 @@ router.get('/purchases', (req, res) => {
   const list = db.purchases.map(p => ({ ...p, creatorName: (db.accounts.find(a => a.id === p.creatorId) || {}).visibleUser }));
   res.json({ purchases: list });
 });
+const { splitPurchaseTax, ensureEconomyState } = require('../economy');
+
 router.put('/purchases/:id/approve', (req, res) => {
   const db = getDB();
+  ensureEconomyState(db);
   const p = db.purchases.find(x => x.id === req.params.id);
   if (!p || p.status !== 'pending') return res.status(404).json({ error: 'Solicitud no encontrada o ya resuelta.' });
   const creator = db.accounts.find(a => a.id === p.creatorId);
   const admin = db.accounts.find(a => a.role === 'admin');
   creditAccount(creator, p.credits, 'Compra de créditos aprobada');
-  if (admin && p.taxCredits) creditAccount(admin, p.taxCredits, `Impuesto de compra (${db.settings.purchaseTaxPct}%)`);
+  let split = { platformCredits: 0, poolCredits: 0, rewardsCredits: 0 };
+  if (p.taxCredits) {
+    split = splitPurchaseTax(db, p.taxCredits);
+    if (admin && split.platformCredits) creditAccount(admin, split.platformCredits, `Impuesto de compra (${db.settings.purchaseTaxPct}%) — parte ViewFlow`);
+  }
   p.status = 'approved';
-  addLog(db, { type: 'purchase', message: `Compra aprobada: ${creator ? creator.visibleUser : p.creatorId} — ${p.credits} créditos ($${p.usd})`, accountName: creator ? creator.visibleUser : null });
+  addLog(db, { type: 'purchase', message: `Compra aprobada: ${creator ? creator.visibleUser : p.creatorId} — ${p.credits} créditos ($${p.usd}). Impuesto repartido: ${split.platformCredits} ViewFlow / ${split.poolCredits} Pool / ${split.rewardsCredits} Fondo de recompensas`, accountName: creator ? creator.visibleUser : null });
+
+  if (creator && creator.referredBy && !creator.referralRewardGiven) {
+    const isFirstApprovedPurchase = db.purchases.filter(x => x.creatorId === creator.id && x.status === 'approved').length === 1;
+    if (isFirstApprovedPurchase) {
+      const referrer = db.accounts.find(a => a.id === creator.referredBy);
+      if (referrer) {
+        creditAccount(referrer, 100, `Referido: ${creator.visibleUser} compró créditos por primera vez`);
+        creator.referralRewardGiven = true;
+        addLog(db, { type: 'referral', message: `${referrer.visibleUser} ganó 100 créditos por referir a ${creator.visibleUser} (primera compra aprobada)`, accountName: referrer.visibleUser });
+      }
+    }
+  }
   if (p.credits > CREDIT_ALERT_THRESHOLD) {
     addLog(db, { type: 'alert', message: `Compra grande aprobada: ${creator ? creator.visibleUser : p.creatorId} recibió ${p.credits} créditos de una sola vez — revisar que el pago sea legítimo`, accountName: creator ? creator.visibleUser : null });
   }
@@ -512,6 +531,41 @@ router.put('/subscriptions/:id/reject', (req, res) => {
   const acc = db.accounts.find(a => a.id === purchase.viewerId);
   if (acc && acc.subStatus === 'pending_payment') acc.subStatus = (acc.subPlan && acc.subPlan !== 'free') ? 'active' : 'active';
   addLog(db, { type: 'subscription', message: `Admin rechazó el pago de suscripción de ${acc ? acc.visibleUser : purchase.viewerId}`, accountName: acc ? acc.visibleUser : null });
+  saveDB(db);
+  res.json({ ok: true });
+});
+
+// ---- Economía: pool, fondo de recompensas, campaña gratuita ----
+router.get('/economy', (req, res) => {
+  const db = getDB();
+  const { ensureEconomyState } = require('../economy');
+  ensureEconomyState(db);
+  res.json({
+    pool: db.pool,
+    rewardsFund: db.rewardsFund,
+    freeCampaignProgram: db.settings.freeCampaignProgram,
+    rewardMilestones: db.settings.rewardMilestones,
+    freeCampaignClaimsCount: db.freeCampaignClaims.length
+  });
+});
+
+router.post('/economy/pool/distribute-now', (req, res) => {
+  const db = getDB();
+  const { ensureEconomyState, distributePool } = require('../economy');
+  ensureEconomyState(db);
+  const result = distributePool(db, addLog, creditAccount);
+  saveDB(db);
+  res.json({ ok: true, ...result });
+});
+
+router.put('/economy/settings', (req, res) => {
+  const { rewardMilestones, freeCampaignEnabled } = req.body || {};
+  const db = getDB();
+  const { ensureEconomyState } = require('../economy');
+  ensureEconomyState(db);
+  if (rewardMilestones && typeof rewardMilestones === 'object') db.settings.rewardMilestones = rewardMilestones;
+  if (typeof freeCampaignEnabled === 'boolean') db.settings.freeCampaignProgram.enabled = freeCampaignEnabled;
+  addLog(db, { type: 'system', message: 'Admin actualizó la configuración de economía (pool/recompensas/campaña gratuita)', accountName: req.account.visibleUser });
   saveDB(db);
   res.json({ ok: true });
 });

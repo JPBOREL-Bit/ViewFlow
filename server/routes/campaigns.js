@@ -2,10 +2,11 @@
 const express = require('express');
 const router = express.Router();
 const { getDB, saveDB, addLog } = require('../db');
-const { requireAuth, checkPassword } = require('../auth');
+const { requireAuth, checkPassword, parseDevice } = require('../auth');
 const { uid } = require('../util');
 const { campaignCost, viewerRewardFor } = require('../pricing');
 const { reduceSecondsByPlan } = require('../subscriptions');
+const { FREE_CAMPAIGN, ensureEconomyState, freeCampaignActive, findFraudMatch } = require('../economy');
 
 function creditAccount(acc, amount, detail) {
   acc.credits = Math.round(((acc.credits || 0) + amount) * 100000) / 100000;
@@ -49,6 +50,64 @@ router.get('/quote', requireAuth('creator'), (req, res) => {
 });
 
 // ---- Crear campaña (creador) ----
+// ---- Estado del beneficio de campaña gratuita (para mostrar en el panel) ----
+router.get('/free/status', requireAuth('creator'), (req, res) => {
+  const db = getDB();
+  ensureEconomyState(db);
+  const acc = db.accounts.find(a => a.id === req.account.id);
+  const alreadyClaimed = db.freeCampaignClaims.some(c => c.creatorId === acc.id);
+  res.json({
+    active: freeCampaignActive(db),
+    alreadyClaimed,
+    remainingCampaigns: Math.max(0, db.settings.freeCampaignProgram.maxCampaigns - db.settings.freeCampaignProgram.usedCampaigns),
+    remainingFund: Math.max(0, db.settings.freeCampaignProgram.fundTotal - db.settings.freeCampaignProgram.fundUsed),
+    program: FREE_CAMPAIGN
+  });
+});
+
+// ---- Reclamar la campaña gratuita (una sola vez por creador, con chequeo antifraude) ----
+router.post('/free', requireAuth('creator'), (req, res) => {
+  const { title, url } = req.body || {};
+  const db = getDB();
+  ensureEconomyState(db);
+  const acc = db.accounts.find(a => a.id === req.account.id);
+
+  if (!freeCampaignActive(db)) {
+    return res.status(400).json({ error: 'El beneficio de campaña gratuita ya no está disponible (se agotó el cupo, el fondo, o pasaron los 30 días).' });
+  }
+  if (db.freeCampaignClaims.some(c => c.creatorId === acc.id)) {
+    return res.status(400).json({ error: 'Ya usaste tu campaña gratuita — es un beneficio de una sola vez por creador.' });
+  }
+  if (!title || !url) return res.status(400).json({ error: 'Faltan título o URL.' });
+  if (!extractYouTubeId(url)) return res.status(400).json({ error: 'Solo se admiten links de YouTube (video o Shorts).' });
+
+  const ip = (req.headers['x-forwarded-for'] || req.ip || '').toString().split(',')[0].trim();
+  const device = parseDevice(req.headers['user-agent']);
+  const fraudSignal = findFraudMatch(db, acc, ip, device);
+  if (fraudSignal) {
+    addLog(db, { type: 'alert', message: `Intento de reclamar campaña gratuita bloqueado: ${acc.visibleUser} coincide con un reclamo anterior por ${fraudSignal}`, accountName: acc.visibleUser, ip });
+    saveDB(db);
+    return res.status(403).json({ error: 'No se pudo validar tu elegibilidad para el beneficio gratuito (ya fue usado desde una cuenta relacionada).' });
+  }
+
+  const camp = {
+    id: uid('camp'), creatorId: acc.id, title: String(title).trim(), url: String(url).trim(), platform: 'youtube',
+    seconds: FREE_CAMPAIGN.seconds, views: FREE_CAMPAIGN.views, viewsDone: 0,
+    credits: FREE_CAMPAIGN.creditsPerCampaign, rewardPerView: FREE_CAMPAIGN.creditsPerCampaign / FREE_CAMPAIGN.views,
+    viewerPool: FREE_CAMPAIGN.creditsPerCampaign, status: 'active', createdAt: Date.now(), fundedFree: true
+  };
+  db.campaigns.push(camp);
+  db.settings.freeCampaignProgram.fundUsed += FREE_CAMPAIGN.creditsPerCampaign;
+  db.settings.freeCampaignProgram.usedCampaigns += 1;
+  db.freeCampaignClaims.push({ id: uid('fcc'), creatorId: acc.id, email: acc.email, phone: acc.phone || null, ip, device, claimedAt: Date.now() });
+  addLog(db, { type: 'campaign', message: `${acc.visibleUser} reclamó su campaña gratuita (fondo: ${db.settings.freeCampaignProgram.fundUsed}/${db.settings.freeCampaignProgram.fundTotal} créditos, ${db.settings.freeCampaignProgram.usedCampaigns}/${db.settings.freeCampaignProgram.maxCampaigns} campañas)`, accountName: acc.visibleUser });
+  if (!freeCampaignActive(db)) {
+    addLog(db, { type: 'alert', message: 'El beneficio de campaña gratuita se agotó (cupo o fondo consumido) — se desactivó automáticamente.', accountName: null });
+  }
+  saveDB(db);
+  res.json({ ok: true, campaign: camp });
+});
+
 router.post('/', requireAuth('creator'), (req, res) => {
   const { title, url, seconds, views, platform } = req.body || {};
   const db = getDB();
@@ -109,6 +168,30 @@ router.get('/mine', requireAuth('creator'), (req, res) => {
   const db = getDB();
   const list = db.campaigns.filter(c => c.creatorId === req.account.id);
   res.json({ campaigns: list });
+});
+
+// ---- Pausar campaña (solo si todavía no arrancó — 0 vistas hechas) ----
+router.put('/:id/pause', requireAuth('creator'), (req, res) => {
+  const db = getDB();
+  const camp = db.campaigns.find(c => c.id === req.params.id && c.creatorId === req.account.id);
+  if (!camp) return res.status(404).json({ error: 'Campaña no encontrada.' });
+  if (camp.status !== 'active') return res.status(400).json({ error: 'Solo se pueden pausar campañas activas.' });
+  if (camp.viewsDone > 0) return res.status(400).json({ error: 'Esta campaña ya empezó a recibir vistas — no se puede pausar ni modificar, solo eliminar.' });
+  camp.status = 'paused';
+  addLog(db, { type: 'campaign', message: `${req.account.visibleUser} pausó la campaña "${camp.title}"`, accountName: req.account.visibleUser });
+  saveDB(db);
+  res.json({ ok: true });
+});
+
+router.put('/:id/resume', requireAuth('creator'), (req, res) => {
+  const db = getDB();
+  const camp = db.campaigns.find(c => c.id === req.params.id && c.creatorId === req.account.id);
+  if (!camp) return res.status(404).json({ error: 'Campaña no encontrada.' });
+  if (camp.status !== 'paused') return res.status(400).json({ error: 'Esta campaña no está pausada.' });
+  camp.status = 'active';
+  addLog(db, { type: 'campaign', message: `${req.account.visibleUser} reanudó la campaña "${camp.title}"`, accountName: req.account.visibleUser });
+  saveDB(db);
+  res.json({ ok: true });
 });
 
 // ---- Eliminar campaña (creador, pide contraseña) ----
@@ -190,6 +273,37 @@ router.post('/:id/participate/complete', requireAuth('viewer'), (req, res) => {
   const acc = db.accounts.find(a => a.id === req.account.id);
   creditAccount(acc, camp.rewardPerView, 'Participación: ' + camp.title);
   addLog(db, { type: 'campaign', message: `${acc.visibleUser} ganó ${camp.rewardPerView} créditos por participar en "${camp.title}"`, accountName: acc.visibleUser });
+
+  if (acc.referredBy && !acc.referralRewardGiven) {
+    const isFirstCompletion = db.participations.filter(p => p.viewerId === acc.id && p.status === 'completed').length === 1;
+    if (isFirstCompletion) {
+      const referrer = db.accounts.find(a => a.id === acc.referredBy);
+      if (referrer) {
+        creditAccount(referrer, 50, `Referido: ${acc.visibleUser} completó su primera campaña`);
+        acc.referralRewardGiven = true;
+        addLog(db, { type: 'referral', message: `${referrer.visibleUser} ganó 50 créditos por referir a ${acc.visibleUser} (completó su primera campaña)`, accountName: referrer.visibleUser });
+      }
+    }
+  }
+
+  // Recompensa por hito de campañas completadas (financiada por el Fondo de recompensas, nunca más de lo disponible).
+  ensureEconomyState(db);
+  if (!Array.isArray(acc.milestonesClaimed)) acc.milestonesClaimed = [];
+  const totalCompleted = db.participations.filter(p => p.viewerId === acc.id && p.status === 'completed').length;
+  const milestones = Object.keys(db.settings.rewardMilestones).map(Number).sort((a, b) => a - b);
+  for (const m of milestones) {
+    if (totalCompleted >= m && !acc.milestonesClaimed.includes(m)) {
+      const rewardAmount = db.settings.rewardMilestones[m];
+      if (db.rewardsFund.balance >= rewardAmount) {
+        db.rewardsFund.balance -= rewardAmount;
+        creditAccount(acc, rewardAmount, `Recompensa por ${m} campañas completadas`);
+        acc.milestonesClaimed.push(m);
+        addLog(db, { type: 'referral', message: `${acc.visibleUser} alcanzó ${m} campañas completadas — recompensa de ${rewardAmount} créditos del Fondo de recompensas`, accountName: acc.visibleUser });
+      } else {
+        addLog(db, { type: 'alert', message: `${acc.visibleUser} alcanzó el hito de ${m} campañas, pero el Fondo de recompensas no tiene saldo suficiente (necesita ${rewardAmount}, hay ${db.rewardsFund.balance})`, accountName: acc.visibleUser });
+      }
+    }
+  }
   saveDB(db);
   res.json({ ok: true, reward: camp.rewardPerView, credits: acc.credits });
 });

@@ -11,7 +11,8 @@ const NAV = [
   { id: 'purchases', label: 'Mis compras' },
   { id: 'donate', label: 'Donar a viewers' },
   { id: 'profile', label: 'Perfil' },
-  { id: 'devices', label: 'Dispositivos' }
+  { id: 'devices', label: 'Dispositivos' },
+  { id: 'referrals', label: 'Mis referidos' }
 ];
 
 function buildNav() {
@@ -45,7 +46,7 @@ async function renderPage(silent) {
   if (!silent) main.innerHTML = '<div class="empty-state">Cargando...</div>';
   try {
     if (currentPage === 'dashboard') await renderDashboard(main);
-    else if (currentPage === 'create') renderCreate(main);
+    else if (currentPage === 'create') await renderCreate(main);
     else if (currentPage === 'mine') await renderMine(main);
     else if (currentPage === 'finished') await renderFinished(main);
     else if (currentPage === 'store') await renderStore(main);
@@ -53,6 +54,7 @@ async function renderPage(silent) {
     else if (currentPage === 'donate') await renderDonate(main);
     else if (currentPage === 'profile') renderProfile(main);
     else if (currentPage === 'devices') await renderDevices(main);
+    else if (currentPage === 'referrals') await renderReferrals(main);
   } catch (e) { if (!silent) main.innerHTML = `<div class="empty-state">${e.message}</div>`; }
   if (!silent) { main.style.animation = 'none'; void main.offsetWidth; main.style.animation = ''; }
 }
@@ -64,6 +66,9 @@ async function renderDashboard(main) {
   const spent = campaigns.reduce((s, c) => s + c.credits, 0);
   const viewersReached = campaigns.reduce((s, c) => s + c.viewsDone, 0);
   const hoursEarned = campaigns.reduce((s, c) => s + (c.viewsDone * c.seconds) / 3600, 0);
+  const hoursPurchased = campaigns.reduce((s, c) => s + (c.views * c.seconds) / 3600, 0);
+  const avgSeconds = campaigns.length ? Math.round(campaigns.reduce((s, c) => s + c.seconds, 0) / campaigns.length) : 0;
+  const avgViewers = campaigns.length ? Math.round(campaigns.reduce((s, c) => s + c.views, 0) / campaigns.length) : 0;
   const goal = getPersonalGoal();
   main.innerHTML = `
     <div class="page-head"><div><h1>Dashboard</h1><div class="ps">Así viene tu cuenta hoy</div></div></div>
@@ -72,9 +77,14 @@ async function renderDashboard(main) {
       <div class="stat-card"><div class="sl">Campañas activas</div><div class="sv teal">${active.length}</div></div>
       <div class="stat-card"><div class="sl">Campañas completas</div><div class="sv">${finished.length}</div></div>
       <div class="stat-card"><div class="sl">Créditos gastados</div><div class="sv">${fmtCr(spent)}</div></div>
-      <div class="stat-card"><div class="sl">Horas de reproducción ganadas</div><div class="sv teal">${hoursEarned.toFixed(1)} h</div></div>
+      <div class="stat-card"><div class="sl">Créditos restantes</div><div class="sv gold">${fmtCr(ME.credits || 0)}</div></div>
+      <div class="stat-card"><div class="sl">Horas compradas</div><div class="sv">${hoursPurchased.toFixed(1)} h</div></div>
+      <div class="stat-card"><div class="sl">Horas obtenidas</div><div class="sv teal">${hoursEarned.toFixed(1)} h</div></div>
       <div class="stat-card"><div class="sl">Viewers conseguidos</div><div class="sv">${viewersReached}</div></div>
+      <div class="stat-card"><div class="sl">Promedio de tiempo por campaña</div><div class="sv">${avgSeconds}s</div></div>
+      <div class="stat-card"><div class="sl">Promedio de viewers por campaña</div><div class="sv">${avgViewers}</div></div>
     </div>
+    <div class="mini-help" style="margin:12px 0 20px;">Tus créditos comprados son la única fuente que mueve toda la economía de ViewFlow: financian las campañas, el Pool semanal de viewers y el Fondo de recompensas. No se emiten créditos gratis fuera de eso.</div>
     <div class="section-card" style="margin-bottom:20px;">
       <h3 style="margin-bottom:16px;">Resumen</h3>
       ${barChart([
@@ -133,10 +143,17 @@ function buildTimePresetOptions() {
   return opts.join('');
 }
 
-function renderCreate(main) {
+async function renderCreate(main) {
+  let freeStatus = null;
+  try { freeStatus = await Api.get('/campaigns/free/status'); } catch (e) {}
   main.innerHTML = `
     <div class="page-head"><div><h1>Crear campaña</h1><div class="ps">Elegí el video, el tiempo y la cantidad de viewers</div></div>
       <button class="btn btn-teal" type="button" onclick="applyQuickCreate()">Creación rápida</button></div>
+    ${freeStatus && freeStatus.active && !freeStatus.alreadyClaimed ? `
+    <div class="notice" style="margin-bottom:20px; max-width:640px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+      <div>Tenés una <b>campaña gratuita</b> disponible (${freeStatus.program.views} viewers, ${freeStatus.program.seconds}s, sin gastar tus créditos) — quedan ${freeStatus.remainingCampaigns} cupos.</div>
+      <button class="btn btn-primary btn-sm" onclick="openFreeCampaignModal()">Usarla ahora</button>
+    </div>` : ''}
     <div class="section-card" style="max-width:640px;">
       <form onsubmit="submitCampaign(event)">
         <div class="field"><label class="req">Título del video</label><input id="cp_title" required></div>
@@ -179,6 +196,26 @@ function applyQuickCreate() {
   toast(`Creación rápida: 30 segundos y ${maxViews} viewers.`);
 }
 
+function openFreeCampaignModal() {
+  renderModal(`
+    <div class="modal-head"><h2>Campaña gratuita</h2><button class="modal-close" onclick="closeModal()">×</button></div>
+    <div class="mini-help" style="margin-bottom:16px;">10 viewers, 30 segundos, sin gastar tus créditos. Beneficio de una sola vez por creador.</div>
+    <form onsubmit="submitFreeCampaign(event)">
+      <div class="field"><label class="req">Título</label><input id="fc_title" required></div>
+      <div class="field"><label class="req">URL de YouTube (video o Shorts)</label><input id="fc_url" required placeholder="https://youtube.com/watch?v=..."></div>
+      <div class="modal-foot"><button class="btn btn-primary" type="submit">Publicar campaña gratuita</button></div>
+    </form>`);
+}
+async function submitFreeCampaign(e) {
+  e.preventDefault();
+  try {
+    await Api.post('/campaigns/free', { title: document.getElementById('fc_title').value.trim(), url: document.getElementById('fc_url').value.trim() });
+    toast('Campaña gratuita publicada.');
+    closeModal();
+    goTo('mine');
+  } catch (err) { toast(err.message, true); }
+}
+
 async function submitCampaign(e) {
   e.preventDefault();
   try {
@@ -196,18 +233,28 @@ async function submitCampaign(e) {
 
 async function renderMine(main) {
   const { campaigns } = await Api.get('/campaigns/mine');
-  const active = campaigns.filter(c => c.status === 'active');
+  const active = campaigns.filter(c => c.status === 'active' || c.status === 'paused');
   main.innerHTML = `
     <div class="page-head"><div><h1>Mis campañas</h1><div class="ps">Seguimiento en tiempo real</div></div></div>
     <div class="section-card table-wrap">
       <table><thead><tr><th>Título</th><th>Vistas</th><th>Tiempo</th><th>Costo</th><th>Estado</th><th></th></tr></thead>
       <tbody>${active.map(c => `
         <tr><td>${c.title}</td><td>${c.viewsDone} / ${c.views}</td><td>${c.seconds}s</td>
-        <td class="mono">${fmtCr(c.credits)} cr</td><td><span class="badge badge-active">Activa</span></td>
-        <td><button class="btn btn-sm btn-danger" onclick="confirmDeleteCampaign('${c.id}')">Eliminar</button></td></tr>`).join('')}
+        <td class="mono">${fmtCr(c.credits)} cr</td><td><span class="badge ${c.status === 'paused' ? 'badge-pending' : 'badge-active'}">${c.status === 'paused' ? 'Pausada' : 'Activa'}</span></td>
+        <td>
+          ${c.status === 'active' && c.viewsDone === 0 ? `<button class="btn btn-sm btn-ghost" onclick="pauseCampaign('${c.id}')">Pausar</button>` : ''}
+          ${c.status === 'paused' ? `<button class="btn btn-sm btn-teal" onclick="resumeCampaign('${c.id}')">Reanudar</button>` : ''}
+          <button class="btn btn-sm btn-danger" onclick="confirmDeleteCampaign('${c.id}')">Eliminar</button>
+        </td></tr>`).join('')}
       </tbody></table>
       ${active.length === 0 ? '<div class="empty-state">Todavía no tenés campañas activas.</div>' : ''}
     </div>`;
+}
+async function pauseCampaign(id) {
+  try { await Api.put(`/campaigns/${id}/pause`); toast('Campaña pausada.'); renderPage(); } catch (err) { toast(err.message, true); }
+}
+async function resumeCampaign(id) {
+  try { await Api.put(`/campaigns/${id}/resume`); toast('Campaña reanudada.'); renderPage(); } catch (err) { toast(err.message, true); }
 }
 async function renderFinished(main) {
   const { campaigns } = await Api.get('/campaigns/mine');
@@ -407,3 +454,33 @@ boot();
 
 const CREATOR_SAFE_REFRESH_PAGES = ['dashboard', 'mine', 'finished', 'purchases'];
 window.__vfSilentRefresh = () => { if (ME && CREATOR_SAFE_REFRESH_PAGES.includes(currentPage)) renderPage(true); };
+
+async function renderReferrals(main) {
+  const d = await Api.get('/auth/referrals');
+  const link = `${window.location.origin}/?ref=${d.refCode}`;
+  main.innerHTML = `
+    <div class="page-head"><div><h1>Mis referidos</h1><div class="ps">Invitá gente a ViewFlow y ganá créditos</div></div></div>
+    <div class="section-card" style="margin-bottom:20px; max-width:600px;">
+      <h3 style="margin-bottom:10px;">Tu link para compartir</h3>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <input id="refLinkInput" value="${link}" readonly style="flex:1; min-width:220px;">
+        <button class="btn btn-primary btn-sm" onclick="copyRefLink()">Copiar</button>
+      </div>
+      <div class="mini-help" style="margin-top:10px;">Ganás <b>50 créditos</b> cuando un viewer que invitaste completa su primera campaña, y <b>100 créditos</b> cuando un creador que invitaste compra créditos por primera vez.</div>
+    </div>
+    <div class="stat-grid" style="margin-bottom:20px;">
+      <div class="stat-card"><div class="sl">Personas referidas</div><div class="sv teal">${d.referredCount}</div></div>
+      <div class="stat-card"><div class="sl">Créditos ganados por referidos</div><div class="sv gold">${fmtCr(d.creditsEarned)}</div></div>
+    </div>
+    <div class="section-card table-wrap">
+      <h3 style="margin-bottom:14px;">Historial</h3>
+      ${d.referred.length === 0 ? '<div class="empty-state">Todavía no invitaste a nadie.</div>' : `
+      <table><thead><tr><th>Usuario</th><th>Rol</th><th>Se unió</th><th>Recompensa</th></tr></thead>
+      <tbody>${d.referred.map(r => `<tr><td>${r.visibleUser}</td><td>${r.role === 'creator' ? 'Creador' : 'Viewer'}</td><td>${new Date(r.joinedAt).toLocaleDateString()}</td><td>${r.rewardGiven ? '<span class="badge badge-approved">Cobrada</span>' : '<span class="badge badge-pending">Pendiente</span>'}</td></tr>`).join('')}</tbody></table>`}
+    </div>`;
+}
+function copyRefLink() {
+  const input = document.getElementById('refLinkInput');
+  input.select();
+  navigator.clipboard.writeText(input.value).then(() => toast('Link copiado.')).catch(() => toast('No se pudo copiar, copialo manualmente.', true));
+}

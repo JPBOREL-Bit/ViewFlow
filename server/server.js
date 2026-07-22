@@ -5,7 +5,7 @@ const express = require('express');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
 
-const { ensureAdminSeed, getDB, saveDB } = require('./db');
+const { ensureAdminSeed, getDB, saveDB, addLog } = require('./db');
 const { attachAccount } = require('./auth');
 const { purgeExpired } = require('./routes/store');
 const { startExchangeRateJob } = require('./exchange-rate');
@@ -62,7 +62,21 @@ app.use('/api/admin', adminRoutes);
 app.get('/api/public-settings', (req, res) => {
   const db = getDB();
   const { siteTitle, siteTagline, siteDesc, maintenanceMode, maintenanceMessage } = db.settings;
-  res.json({ siteTitle, siteTagline, siteDesc, maintenanceMode, maintenanceMessage });
+  const ONLINE_WINDOW_MS = 5 * 60 * 1000;
+  const now = Date.now();
+  const approved = db.accounts.filter(a => a.status === 'approved');
+  const totalCreators = approved.filter(a => a.role === 'creator').length;
+  const totalViewers = approved.filter(a => a.role === 'viewer').length;
+  const activeAccountIds = new Set(
+    db.sessions.filter(s => now - s.lastActiveAt < ONLINE_WINDOW_MS).map(s => s.accountId)
+  );
+  const onlineCreators = approved.filter(a => a.role === 'creator' && activeAccountIds.has(a.id)).length;
+  const onlineViewers = approved.filter(a => a.role === 'viewer' && activeAccountIds.has(a.id)).length;
+  res.json({
+    siteTitle, siteTagline, siteDesc, maintenanceMode, maintenanceMessage,
+    stats: { totalCreators, totalViewers, onlineCreators, onlineViewers },
+    recaptchaSiteKey: process.env.RECAPTCHA_SITE_KEY || null
+  });
 });
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));
@@ -96,6 +110,24 @@ setInterval(() => {
   const db = getDB();
   if (purgeExpired(db)) saveDB(db);
 }, 5 * 60 * 1000);
+
+// Chequea cada hora si ya empezó una semana nueva — si es así, reparte el
+// Pool acumulado entre los viewers elegibles. También hay un botón manual
+// en el panel de admin por si el servidor estuvo dormido (plan free de
+// Render) justo cuando tocaba repartir.
+const { ensureEconomyState, startOfWeek, distributePool } = require('./economy');
+function creditAccountForPool(acc, amount, detail) {
+  acc.credits = Math.round(((acc.credits || 0) + amount) * 100000) / 100000;
+  acc.ledger.push({ id: 'ldg-' + Math.random().toString(36).slice(2, 10), ts: Date.now(), type: 'in', amount, detail });
+}
+setInterval(() => {
+  const db = getDB();
+  ensureEconomyState(db);
+  if (startOfWeek(Date.now()) > db.pool.weekStart) {
+    distributePool(db, addLog, creditAccountForPool);
+    saveDB(db);
+  }
+}, 60 * 60 * 1000);
 
 app.listen(PORT, () => {
   console.log(`[viewflow] servidor corriendo en http://localhost:${PORT}`);

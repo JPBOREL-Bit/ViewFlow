@@ -5,9 +5,18 @@ const { getDB, saveDB, addLog } = require('../db');
 const { hashPassword, checkPassword, setSessionCookie, clearSessionCookie, createSession, publicAccount, requireAuth } = require('../auth');
 const { uid, genVerifyCode } = require('../util');
 const { trySendVerificationEmail } = require('../mailer');
+const { verifyCaptcha } = require('../recaptcha');
 
 function findByEmail(db, email) {
   return db.accounts.find(a => a.email.toLowerCase() === String(email || '').toLowerCase());
+}
+
+// Genera un código de referido único (6 caracteres).
+function generateReferralCode(db) {
+  let code;
+  do { code = Math.random().toString(36).slice(2, 8).toUpperCase(); }
+  while (db.accounts.some(a => a.refCode === code));
+  return code;
 }
 
 // Genera un "Viewer_N" único que nadie tenga todavía.
@@ -23,7 +32,8 @@ function generateUniqueViewerName(db) {
 
 // ---- Registro ----
 router.post('/register', async (req, res) => {
-  const { role, name, visibleUser, email, phone, ytUser, password, acceptedTerms } = req.body || {};
+  const { role, name, visibleUser, email, phone, ytUser, password, acceptedTerms, ref, captchaToken } = req.body || {};
+  if (!(await verifyCaptcha(captchaToken))) return res.status(400).json({ error: 'Verificación de "no soy un robot" fallida. Probá de nuevo.' });
   if (!['creator', 'viewer'].includes(role)) return res.status(400).json({ error: 'Rol inválido.' });
   if (!name || !email || !password) return res.status(400).json({ error: 'Faltan campos obligatorios.' });
   if (password.length < 8) return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres.' });
@@ -56,6 +66,9 @@ router.post('/register', async (req, res) => {
     ytUser: ytUser ? String(ytUser).trim() : '',
     theme: 'light',
     credits: 0,
+    refCode: generateReferralCode(db),
+    referredBy: (ref && db.accounts.find(a => a.refCode === String(ref).trim().toUpperCase()) || {}).id || null,
+    referralRewardGiven: false,
     subPlan: 'free',
     subStatus: 'active',
     subStartedAt: role === 'viewer' ? Date.now() : null,
@@ -125,7 +138,8 @@ const MAX_FAILED_ATTEMPTS = 5;
 const IP_BAN_MINUTES = 10;
 
 router.post('/login', async (req, res) => {
-  const { email, password } = req.body || {};
+  const { email, password, captchaToken } = req.body || {};
+  if (!(await verifyCaptcha(captchaToken))) return res.status(400).json({ error: 'Verificación de "no soy un robot" fallida. Probá de nuevo.' });
   const db = getDB();
   const ip = (req.headers['x-forwarded-for'] || req.ip || '').toString().split(',')[0].trim();
   const now = Date.now();
@@ -170,7 +184,9 @@ router.post('/login', async (req, res) => {
 router.post('/logout', (req, res) => {
   if (req.sessionId) {
     const db = getDB();
+    const acc = req.account || db.accounts.find(a => a.id === (db.sessions.find(s => s.id === req.sessionId) || {}).accountId);
     db.sessions = db.sessions.filter(s => s.id !== req.sessionId);
+    if (acc) addLog(db, { type: 'user', message: `${acc.visibleUser} cerró sesión`, accountName: acc.visibleUser });
     saveDB(db);
   }
   clearSessionCookie(res);
@@ -240,6 +256,7 @@ router.post('/change-password', requireAuth(), (req, res) => {
   if (!newPassword || newPassword.length < 8) return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres.' });
   acc.passwordHash = hashPassword(newPassword);
   acc.verifyCode = null;
+  addLog(db, { type: 'user', message: `${acc.visibleUser || acc.name} cambió su contraseña`, accountName: acc.visibleUser });
   saveDB(db);
   res.json({ ok: true });
 });
@@ -279,6 +296,26 @@ router.put('/theme', requireAuth(), (req, res) => {
   acc.theme = theme;
   saveDB(db);
   res.json({ ok: true, theme });
+});
+
+router.get('/referrals', requireAuth(), (req, res) => {
+  const db = getDB();
+  const acc = db.accounts.find(a => a.id === req.account.id);
+  const referred = db.accounts.filter(a => a.referredBy === acc.id);
+  const rewardLogs = db.activityLog
+    .filter(l => l.type === 'referral' && l.accountName === acc.visibleUser)
+    .sort((a, b) => b.ts - a.ts);
+  const totalEarned = rewardLogs.reduce((s, l) => {
+    const m = l.message.match(/ganó (\d+) créditos/);
+    return s + (m ? Number(m[1]) : 0);
+  }, 0);
+  res.json({
+    refCode: acc.refCode,
+    referredCount: referred.length,
+    creditsEarned: totalEarned,
+    referred: referred.map(r => ({ visibleUser: r.visibleUser, role: r.role, joinedAt: r.createdAt, rewardGiven: !!r.referralRewardGiven })),
+    history: rewardLogs.slice(0, 50)
+  });
 });
 
 module.exports = router;

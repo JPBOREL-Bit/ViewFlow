@@ -141,5 +141,5 @@ function publicAccount(acc) {
 
 module.exports = {
   attachAccount, requireAuth, setSessionCookie, clearSessionCookie, createSession,
-  hashPassword, checkPassword, publicAccount, COOKIE_NAME, MAX_DEVICES
+  hashPassword, checkPassword, publicAccount, parseDevice, COOKIE_NAME, MAX_DEVICES
 };

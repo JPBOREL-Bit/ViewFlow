@@ -12,7 +12,8 @@ const NAV = [
   { id: 'withdraw', label: 'Retirar' },
   { id: 'history', label: 'Actividad' },
   { id: 'profile', label: 'Perfil' },
-  { id: 'devices', label: 'Dispositivos' }
+  { id: 'devices', label: 'Dispositivos' },
+  { id: 'referrals', label: 'Mis referidos' }
 ];
 function buildNav() {
   document.getElementById('sbNav').innerHTML = NAV.map(n =>
@@ -51,6 +52,7 @@ async function renderPage(silent) {
     else if (currentPage === 'history') await renderHistory(main);
     else if (currentPage === 'profile') renderProfile(main);
     else if (currentPage === 'devices') await renderDevices(main);
+    else if (currentPage === 'referrals') await renderReferrals(main);
   } catch (e) { if (!silent) main.innerHTML = `<div class="empty-state">${e.message}</div>`; }
 }
 
@@ -85,6 +87,7 @@ async function renderDashboard(main) {
       <div class="stat-card"><div class="sl">Créditos donados</div><div class="sv">${fmtCr(creditsDonated)}</div></div>
       <div class="stat-card"><div class="sl">Créditos ganados</div><div class="sv teal">${fmtCr(creditsEarned)}</div></div>
     </div>
+    <div class="mini-help" style="margin:12px 0 4px;">ViewFlow tiene una economía cerrada: los créditos disponibles para ganar salen de las compras de los creadores. Si hay pocas campañas activas, es porque hay poca compra de créditos en ese momento — no es un límite artificial.</div>
     <div class="ad-slot-banner"><ins class="adsbygoogle"
      style="display:block; width:100%;"
      data-ad-client="ca-pub-8545340767144593"
@@ -504,3 +507,33 @@ boot();
 
 const VIEWER_SAFE_REFRESH_PAGES = ['dashboard', 'history'];
 window.__vfSilentRefresh = () => { if (ME && VIEWER_SAFE_REFRESH_PAGES.includes(currentPage)) renderPage(true); };
+
+async function renderReferrals(main) {
+  const d = await Api.get('/auth/referrals');
+  const link = `${window.location.origin}/?ref=${d.refCode}`;
+  main.innerHTML = `
+    <div class="page-head"><div><h1>Mis referidos</h1><div class="ps">Invitá gente a ViewFlow y ganá créditos</div></div></div>
+    <div class="section-card" style="margin-bottom:20px; max-width:600px;">
+      <h3 style="margin-bottom:10px;">Tu link para compartir</h3>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <input id="refLinkInput" value="${link}" readonly style="flex:1; min-width:220px;">
+        <button class="btn btn-primary btn-sm" onclick="copyRefLink()">Copiar</button>
+      </div>
+      <div class="mini-help" style="margin-top:10px;">Ganás <b>50 créditos</b> cuando un viewer que invitaste completa su primera campaña, y <b>100 créditos</b> cuando un creador que invitaste compra créditos por primera vez.</div>
+    </div>
+    <div class="stat-grid" style="margin-bottom:20px;">
+      <div class="stat-card"><div class="sl">Personas referidas</div><div class="sv teal">${d.referredCount}</div></div>
+      <div class="stat-card"><div class="sl">Créditos ganados por referidos</div><div class="sv gold">${fmtCr(d.creditsEarned)}</div></div>
+    </div>
+    <div class="section-card table-wrap">
+      <h3 style="margin-bottom:14px;">Historial</h3>
+      ${d.referred.length === 0 ? '<div class="empty-state">Todavía no invitaste a nadie.</div>' : `
+      <table><thead><tr><th>Usuario</th><th>Rol</th><th>Se unió</th><th>Recompensa</th></tr></thead>
+      <tbody>${d.referred.map(r => `<tr><td>${r.visibleUser}</td><td>${r.role === 'creator' ? 'Creador' : 'Viewer'}</td><td>${new Date(r.joinedAt).toLocaleDateString()}</td><td>${r.rewardGiven ? '<span class="badge badge-approved">Cobrada</span>' : '<span class="badge badge-pending">Pendiente</span>'}</td></tr>`).join('')}</tbody></table>`}
+    </div>`;
+}
+function copyRefLink() {
+  const input = document.getElementById('refLinkInput');
+  input.select();
+  navigator.clipboard.writeText(input.value).then(() => toast('Link copiado.')).catch(() => toast('No se pudo copiar, copialo manualmente.', true));
+}

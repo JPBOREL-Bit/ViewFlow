@@ -7,7 +7,16 @@ Api.get('/public-settings').then(s => {
   document.getElementById('heroTitle').textContent = s.siteTagline;
   document.getElementById('heroDesc').textContent = s.siteDesc;
   if (s.maintenanceMode) showMaintenanceOverlay(s.maintenanceMessage);
+  if (s.stats) renderCommunityStats(s.stats);
 }).catch(() => {});
+
+function renderCommunityStats(stats) {
+  const el = document.getElementById('communityStats');
+  if (!el) return;
+  el.innerHTML = `
+    <div class="community-stat"><div class="cs-num">${stats.totalCreators}</div><div class="cs-label">Creadores <span class="cs-online">${stats.onlineCreators} en línea</span></div></div>
+    <div class="community-stat"><div class="cs-num">${stats.totalViewers}</div><div class="cs-label">Viewers <span class="cs-online">${stats.onlineViewers} en línea</span></div></div>`;
+}
 
 // Si ya hay sesión activa, mandamos directo al panel correspondiente.
 Api.get('/auth/me').then(({ account }) => {
@@ -79,6 +88,19 @@ function openRegister(role) {
   }
 }
 
+let __recaptchaSiteKey = null;
+function recaptchaWidgetHTML(id) {
+  if (!__recaptchaSiteKey) return '';
+  return `<div class="g-recaptcha" id="${id}" data-sitekey="${__recaptchaSiteKey}" style="margin-bottom:14px;"></div>`;
+}
+function getCaptchaToken(widgetId) {
+  if (!__recaptchaSiteKey || typeof grecaptcha === 'undefined') return null;
+  try {
+    const el = document.getElementById(widgetId);
+    const idx = el ? el.dataset.widgetId : undefined;
+    return grecaptcha.getResponse(idx);
+  } catch (e) { return null; }
+}
 function termsCheckboxHTML(id) {
   return `
     <div class="field" style="display:flex; align-items:flex-start; gap:8px;">
@@ -91,13 +113,17 @@ function termsCheckboxHTML(id) {
     </div>`;
 }
 
+function getRefFromUrl() {
+  const p = new URLSearchParams(window.location.search);
+  return p.get('ref') || null;
+}
 async function submitRegister(e, role) {
   e.preventDefault();
   const termsEl = document.getElementById(role === 'creator' ? 'rc_terms' : 'rv_terms');
   if (!termsEl.checked) { toast('Tenés que aceptar los Términos y la Política de Privacidad para registrarte.', true); return; }
   const payload = role === 'creator'
-    ? { role, visibleUser: rc_visible.value.trim(), name: rc_name.value.trim(), phone: rc_phone.value.trim(), email: rc_email.value.trim(), ytUser: rc_yt.value.trim(), password: rc_pass.value, acceptedTerms: true }
-    : { role, name: rv_name.value.trim(), visibleUser: rv_visible.value.trim(), email: rv_email.value.trim(), phone: rv_phone.value.trim(), password: rv_pass.value, acceptedTerms: true };
+    ? { role, visibleUser: rc_visible.value.trim(), name: rc_name.value.trim(), phone: rc_phone.value.trim(), email: rc_email.value.trim(), ytUser: rc_yt.value.trim(), password: rc_pass.value, acceptedTerms: true, ref: getRefFromUrl() }
+    : { role, name: rv_name.value.trim(), visibleUser: rv_visible.value.trim(), email: rv_email.value.trim(), phone: rv_phone.value.trim(), password: rv_pass.value, acceptedTerms: true, ref: getRefFromUrl() };
   try {
     await Api.post('/auth/register', payload);
     renderModal(`
@@ -113,6 +139,7 @@ function openLogin() {
     <form onsubmit="submitLogin(event)">
       <div class="field"><label class="req">Gmail</label><input id="li_email" type="email" required></div>
       ${passwordFieldHTML('li_pass', 'Contraseña', true)}
+      ${recaptchaWidgetHTML('li_captcha')}
       <div class="modal-foot">
         <button class="btn btn-primary" type="submit">Ingresar</button>
         <button class="btn btn-ghost btn-sm" type="button" onclick="openForgotPassword()">Olvidé mi contraseña</button>

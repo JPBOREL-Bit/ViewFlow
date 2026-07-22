@@ -12,6 +12,7 @@ const NAV = [
   { id: 'withdrawals', label: 'Retiros' },
   { id: 'donations', label: 'Donaciones' },
   { id: 'subscriptions', label: 'Suscripciones' },
+  { id: 'economy', label: 'Economía' },
   { id: 'verify', label: 'Verificación' },
   { id: 'messages', label: 'Mensajes' },
   { id: 'taxes', label: 'Impuestos' },
@@ -68,7 +69,7 @@ async function renderPage(silent) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.page === currentPage));
   const main = document.getElementById('mainContent');
   if (!silent) main.innerHTML = '<div class="empty-state">Cargando...</div>';
-  const renderers = { overview: renderOverview, users: renderUsers, creators: renderCreatorsSection, viewers: renderViewersSection, campaigns: renderCampaigns, purchases: renderPurchases, withdrawals: renderWithdrawals, donations: renderDonations, subscriptions: renderSubscriptions, verify: renderVerify, messages: renderMessages, taxes: renderTaxes, settings: renderSettings, devices: renderDevices, logs: renderLogs };
+  const renderers = { overview: renderOverview, users: renderUsers, creators: renderCreatorsSection, viewers: renderViewersSection, campaigns: renderCampaigns, purchases: renderPurchases, withdrawals: renderWithdrawals, donations: renderDonations, subscriptions: renderSubscriptions, economy: renderEconomy, verify: renderVerify, messages: renderMessages, taxes: renderTaxes, settings: renderSettings, devices: renderDevices, logs: renderLogs };
   try { await renderers[currentPage](main); } catch (e) { if (!silent) main.innerHTML = `<div class="empty-state">${e.message}</div>`; }
 }
 
@@ -332,6 +333,60 @@ function searchLogs() {
   const q = document.getElementById('logSearch').value;
   const type = document.getElementById('logType').value;
   renderLogs(document.getElementById('mainContent'), q, type);
+}
+
+async function renderEconomy(main) {
+  const d = await Api.get('/admin/economy');
+  const fp = d.freeCampaignProgram;
+  main.innerHTML = `
+    <div class="page-head"><div><h1>Economía</h1><div class="ps">Pool semanal, fondo de recompensas y campaña gratuita para creadores</div></div></div>
+    <div class="notice" style="margin-bottom:20px;">Economía cerrada: los créditos que circulan salen únicamente de compras de creadores, del impuesto sobre esas compras, y de donaciones entre usuarios — nunca se emiten créditos gratis fuera del fondo inicial de campaña gratuita (tope fijo de ${fp.fundTotal}). Si no hay creadores comprando, no hay campañas, ni pool, ni recompensas nuevas.</div>
+
+    <div class="stat-grid" style="margin-bottom:24px;">
+      <div class="stat-card"><div class="sl">Pool — saldo actual</div><div class="sv gold">${fmtCr(d.pool.balance)} cr</div></div>
+      <div class="stat-card"><div class="sl">Fondo de recompensas — saldo</div><div class="sv teal">${fmtCr(d.rewardsFund.balance)} cr</div></div>
+      <div class="stat-card"><div class="sl">Campaña gratuita — fondo usado</div><div class="sv">${fp.fundUsed} / ${fp.fundTotal} cr</div></div>
+      <div class="stat-card"><div class="sl">Campaña gratuita — cupos usados</div><div class="sv">${fp.usedCampaigns} / ${fp.maxCampaigns}</div></div>
+    </div>
+
+    <div class="section-card" style="margin-bottom:20px; max-width:640px;">
+      <h3 style="margin-bottom:10px;">Pool semanal</h3>
+      <div class="mini-help" style="margin-bottom:12px;">Se reparte solo entre viewers con cuenta activa y al menos 2 campañas completadas en los últimos 3 días. Se reparte solo automáticamente cada semana, o podés forzarlo ahora.</div>
+      <button class="btn btn-primary btn-sm" onclick="distributePoolNow()">Repartir pool ahora</button>
+      ${d.pool.history.length ? `<table style="margin-top:14px;"><thead><tr><th>Fecha</th><th>Repartido</th><th>Elegibles</th></tr></thead>
+      <tbody>${d.pool.history.slice(0, 10).map(h => `<tr><td>${new Date(h.ts).toLocaleString()}</td><td class="mono">${h.distributed} cr</td><td>${h.eligibleCount}</td></tr>`).join('')}</tbody></table>` : ''}
+    </div>
+
+    <div class="section-card" style="margin-bottom:20px; max-width:640px;">
+      <h3 style="margin-bottom:10px;">Campaña gratuita para creadores</h3>
+      <div class="mini-help" style="margin-bottom:12px;">${fp.enabled ? 'Activa' : 'Desactivada manualmente'} · ${fp.usedCampaigns}/${fp.maxCampaigns} cupos · ${fp.fundUsed}/${fp.fundTotal} créditos del fondo · ${d.freeCampaignClaimsCount} reclamos totales · ventana de ${fp.durationDays} días desde ${new Date(fp.startedAt).toLocaleDateString()}</div>
+      <button class="btn btn-sm ${fp.enabled ? 'btn-danger' : 'btn-teal'}" onclick="toggleFreeCampaign(${!fp.enabled})">${fp.enabled ? 'Desactivar ahora' : 'Reactivar'}</button>
+    </div>
+
+    <div class="section-card" style="max-width:640px;">
+      <h3 style="margin-bottom:10px;">Recompensas por hitos de campañas completadas</h3>
+      <div class="mini-help" style="margin-bottom:12px;">Se pagan solas cuando un viewer llega al hito, siempre que el Fondo de recompensas tenga saldo suficiente.</div>
+      <form onsubmit="saveMilestones(event)">
+        ${Object.keys(d.rewardMilestones).sort((a, b) => a - b).map(m => `
+          <div class="field"><label>${m} campañas</label><input class="milestone-input" data-m="${m}" type="number" value="${d.rewardMilestones[m]}"></div>`).join('')}
+        <button class="btn btn-primary btn-sm" type="submit">Guardar recompensas</button>
+      </form>
+    </div>`;
+}
+async function distributePoolNow() {
+  try { const r = await Api.post('/admin/economy/pool/distribute-now'); toast(`Repartido: ${r.distributed} cr entre ${r.eligibleCount} viewers.`); renderEconomy(document.getElementById('mainContent')); }
+  catch (err) { toast(err.message, true); }
+}
+async function toggleFreeCampaign(enabled) {
+  try { await Api.put('/admin/economy/settings', { freeCampaignEnabled: enabled }); toast('Actualizado.'); renderEconomy(document.getElementById('mainContent')); }
+  catch (err) { toast(err.message, true); }
+}
+async function saveMilestones(e) {
+  e.preventDefault();
+  const rewardMilestones = {};
+  document.querySelectorAll('.milestone-input').forEach(el => { rewardMilestones[el.dataset.m] = Number(el.value); });
+  try { await Api.put('/admin/economy/settings', { rewardMilestones }); toast('Recompensas guardadas.'); }
+  catch (err) { toast(err.message, true); }
 }
 
 async function renderSubscriptions(main) {
