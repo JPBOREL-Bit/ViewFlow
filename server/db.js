@@ -66,6 +66,7 @@ function migrate(db) {
       if (!a.subStatus) a.subStatus = 'active';
       if (a.subStartedAt === undefined) a.subStartedAt = a.createdAt || Date.now();
       if (a.subRenewsAt === undefined) a.subRenewsAt = null;
+      if (!a.subBillingCycle) a.subBillingCycle = null;
     }
   });
   (db.accounts || []).forEach(a => {

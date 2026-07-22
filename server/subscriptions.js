@@ -10,6 +10,12 @@ const PLANS = {
   elite: { key: 'elite', label: 'Elite', priceUsd: 9.99, timeReductionPct: 50, withdrawTaxPct: 0,  priority: 3, badge: 'Elite' }
 };
 const PLAN_ORDER = ['free', 'plus', 'pro', 'elite'];
+const ANNUAL_DISCOUNT_PCT = 10; // pagando el año completo de una, se ahorra un 10%
+
+function annualPriceUsd(planKey) {
+  const monthly = getPlan(planKey).priceUsd;
+  return Math.round(monthly * 12 * (1 - ANNUAL_DISCOUNT_PCT / 100) * 100) / 100;
+}
 
 function getPlan(key) {
   return PLANS[key] || PLANS.free;
@@ -28,4 +34,4 @@ function withdrawTaxForPlan(planKey) {
   return getPlan(planKey).withdrawTaxPct;
 }
 
-module.exports = { PLANS, PLAN_ORDER, getPlan, reduceSecondsByPlan, withdrawTaxForPlan };
+module.exports = { PLANS, PLAN_ORDER, ANNUAL_DISCOUNT_PCT, getPlan, reduceSecondsByPlan, withdrawTaxForPlan, annualPriceUsd };

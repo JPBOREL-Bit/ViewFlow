@@ -106,7 +106,7 @@ async function renderCampaigns(main) {
     <div class="page-head"><div><h1>Campañas disponibles</h1><div class="ps">Mirá videos y ganá créditos por tu tiempo</div></div></div>
     ${campaigns.length === 0 ? '<div class="empty-state">No hay campañas disponibles en este momento.</div>' : campaigns.map(c => `
       <div class="section-card" style="margin-bottom:14px;">
-        <h4>${c.title} <span class="badge" style="text-transform:uppercase; font-size:10px;">${PLATFORM_LABELS[c.platform] || 'YouTube'}</span></h4>
+        <h4>${c.title}</h4>
         <div class="mini-help">Por ${c.creatorName} · Quedate viendo: <b>${formatHMS(reducedSecondsPreview(c.seconds))}</b>${reducedSecondsPreview(c.seconds) < c.seconds ? ` <span style="color:var(--gold);">(reducido por tu plan)</span>` : ''} · Vas a ganar: <b style="color:var(--gold)">${fmtCr(c.rewardPerView)} créditos</b></div>
         <div class="progress-bar"><div class="progress-fill" style="width:${Math.min(100, (c.viewsDone / c.views) * 100)}%"></div></div>
         <div style="margin-top:14px;"><button class="btn btn-primary btn-sm" onclick="openParticipate('${c.id}')">Participar</button></div>
@@ -136,61 +136,41 @@ async function openParticipate(campId) {
   try { start = await Api.post(`/campaigns/${campId}/participate/start`); }
   catch (err) { toast(err.message, true); return; }
 
-  const platform = start.participation.platform || 'youtube';
-  activeParticipation = { id: start.participation.id, campaignId: campId, seconds: start.participation.seconds, reward: start.participation.reward, videoId: start.videoId, platform };
+  activeParticipation = { id: start.participation.id, campaignId: campId, seconds: start.participation.seconds, reward: start.participation.reward, videoId: start.videoId };
   let total = start.participation.effectiveSeconds; // ya viene reducido según el plan del viewer
   let remaining = total;
   const reducedNote = total < activeParticipation.seconds ? ` <span style="color:var(--gold);">(reducido por tu plan)</span>` : '';
 
-  if (platform === 'youtube') {
-    renderModal(`
-      <div class="modal-head"><h2>Mirando video</h2><button class="modal-close" onclick="tryCloseParticipation()">×</button></div>
-      <div class="player-frame"><div id="pt_yt_player" style="width:100%; height:100%;"></div><div class="player-lock-overlay"></div></div>
-      <div class="timer-ring-text mono" id="pt_remaining">${formatHMS(remaining)}</div>
-      <div class="timer-label" id="pt_label">Quedate viendo sin salir de esta pestaña para ganar <b style="color:var(--gold)">${fmtCr(activeParticipation.reward)} créditos</b>${reducedNote}</div>
-      <div class="progress-bar"><div class="progress-fill" id="pt_progress" style="width:0%"></div></div>
-      <div class="mini-help" id="pt_tabwarn" style="text-align:center; color:var(--red);"></div>
-      <div class="modal-foot"><button class="btn btn-danger" id="pt_stop_btn" onclick="stopParticipation()">Dejar de participar</button></div>
-    `, 'modal-video');
+  renderModal(`
+    <div class="modal-head"><h2>Mirando video</h2><button class="modal-close" onclick="tryCloseParticipation()">×</button></div>
+    <div class="player-frame"><div id="pt_yt_player" style="width:100%; height:100%;"></div><div class="player-lock-overlay"></div></div>
+    <div class="timer-ring-text mono" id="pt_remaining">${formatHMS(remaining)}</div>
+    <div class="timer-label" id="pt_label">Quedate viendo sin salir de esta pestaña para ganar <b style="color:var(--gold)">${fmtCr(activeParticipation.reward)} créditos</b>${reducedNote}</div>
+    <div class="progress-bar"><div class="progress-fill" id="pt_progress" style="width:0%"></div></div>
+    <div class="mini-help" id="pt_tabwarn" style="text-align:center; color:var(--red);"></div>
+    <div class="modal-foot"><button class="btn btn-danger" id="pt_stop_btn" onclick="stopParticipation()">Dejar de participar</button></div>
+  `, 'modal-video');
 
-    await loadYouTubeApi();
-    ytPlayer = new YT.Player('pt_yt_player', {
-      videoId: activeParticipation.videoId,
-      playerVars: { autoplay: 1, rel: 0, modestbranding: 1, controls: 0, disablekb: 1, fs: 0, iv_load_policy: 3, origin: location.origin },
-      events: {
-        onReady: async (e) => {
-          e.target.playVideo();
-          const dur = Math.floor(e.target.getDuration() || 0);
-          if (dur > 0 && dur < total) {
-            try {
-              const res = await Api.post(`/campaigns/${campId}/participate/duration`, { participationId: activeParticipation.id, duration: dur });
-              total = res.effectiveSeconds;
-              remaining = Math.min(remaining, total);
-              const labelEl = document.getElementById('pt_label');
-              if (labelEl) labelEl.innerHTML = `El video dura menos de lo pedido — mirándolo completo ya ganás <b style="color:var(--gold)">${fmtCr(activeParticipation.reward)} créditos</b> (el creador paga el tiempo completo igual).`;
-            } catch (err) { /* si falla, seguimos con el tiempo original */ }
-          }
+  await loadYouTubeApi();
+  ytPlayer = new YT.Player('pt_yt_player', {
+    videoId: activeParticipation.videoId,
+    playerVars: { autoplay: 1, rel: 0, modestbranding: 1, controls: 0, disablekb: 1, fs: 0, iv_load_policy: 3, origin: location.origin },
+    events: {
+      onReady: async (e) => {
+        e.target.playVideo();
+        const dur = Math.floor(e.target.getDuration() || 0);
+        if (dur > 0 && dur < total) {
+          try {
+            const res = await Api.post(`/campaigns/${campId}/participate/duration`, { participationId: activeParticipation.id, duration: dur });
+            total = res.effectiveSeconds;
+            remaining = Math.min(remaining, total);
+            const labelEl = document.getElementById('pt_label');
+            if (labelEl) labelEl.innerHTML = `El video dura menos de lo pedido — mirándolo completo ya ganás <b style="color:var(--gold)">${fmtCr(activeParticipation.reward)} créditos</b> (el creador paga el tiempo completo igual).`;
+          } catch (err) { /* si falla, seguimos con el tiempo original */ }
         }
       }
-    });
-  } else {
-    // TikTok / Instagram: no hay forma pública de verificar la duración real
-    // ni de embeber el reproductor de forma confiable, así que usamos el
-    // mismo sistema de temporizador (pestaña activa) que YouTube usaba antes
-    // de tener detección de duración real.
-    const camp = (await Api.get('/campaigns/active')).campaigns.find(c => c.id === campId);
-    const url = camp ? camp.url : '#';
-    renderModal(`
-      <div class="modal-head"><h2>Mirando en ${PLATFORM_LABELS[platform] || platform}</h2><button class="modal-close" onclick="tryCloseParticipation()">×</button></div>
-      <div class="notice" style="margin-bottom:16px;">Abrí el video en una pestaña nueva y quedate mirándolo. Esta pestaña de ViewFlow tiene que seguir abierta y activa para que cuente el tiempo.</div>
-      <div style="text-align:center; margin-bottom:16px;"><a href="${url}" target="_blank" rel="noopener" class="btn btn-primary">Abrir video en ${PLATFORM_LABELS[platform] || platform}</a></div>
-      <div class="timer-ring-text mono" id="pt_remaining">${formatHMS(remaining)}</div>
-      <div class="timer-label" id="pt_label">Quedate en esta pestaña para ganar <b style="color:var(--gold)">${fmtCr(activeParticipation.reward)} créditos</b>${reducedNote}</div>
-      <div class="progress-bar"><div class="progress-fill" id="pt_progress" style="width:0%"></div></div>
-      <div class="mini-help" id="pt_tabwarn" style="text-align:center; color:var(--red);"></div>
-      <div class="modal-foot"><button class="btn btn-danger" id="pt_stop_btn" onclick="stopParticipation()">Dejar de participar</button></div>
-    `, 'modal-video');
-  }
+    }
+  });
 
   document.removeEventListener('visibilitychange', onVisibilityChange);
   document.addEventListener('visibilitychange', onVisibilityChange);
@@ -276,7 +256,11 @@ async function renderSubscription(main) {
     <div class="section-card" style="margin-bottom:24px;">
       <h3 style="margin-bottom:6px;">Tu plan actual: ${sub.planDetail.label}${sub.planDetail.badge ? ` <span class="badge badge-approved">${sub.planDetail.badge}</span>` : ''}</h3>
       <div class="mini-help">Impuesto de retiro: ${sub.planDetail.withdrawTaxPct}% · Reducción de tiempo en campañas: ${sub.planDetail.timeReductionPct}%</div>
-      ${sub.plan !== 'free' ? `<div style="margin-top:12px;"><button class="btn btn-danger btn-sm" onclick="cancelSubscription()">Cancelar suscripción</button></div>` : ''}
+      ${sub.plan !== 'free' ? `<div class="mini-help" style="margin-top:6px;">
+        ${sub.billingCycle === 'annual' ? 'Pago anual (1 pago) — no se te vuelve a cobrar hasta' : 'Pago mensual — se renueva automáticamente el'} ${sub.renewsAt ? new Date(sub.renewsAt).toLocaleDateString() : '—'}.
+        Si cancelás, no se devuelve lo ya pagado.
+      </div>
+      <div style="margin-top:12px;"><button class="btn btn-danger btn-sm" onclick="cancelSubscription()">Cancelar suscripción</button></div>` : ''}
     </div>
 
     <div class="pkg-grid" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:16px;">
@@ -304,36 +288,52 @@ async function renderSubscription(main) {
 function fmtArsSub(n) { return Math.round(n).toLocaleString('es-AR'); }
 
 async function openSubscribeModal(planKey) {
-  const { plans, banks } = await Api.get('/subscriptions/plans');
+  const { plans, banks, annualDiscountPct } = await Api.get('/subscriptions/plans');
   const plan = plans.find(p => p.key === planKey);
   renderModal(`
     <div class="modal-head"><h2>Suscribirte a ${plan.label}</h2><button class="modal-close" onclick="closeModal()">×</button></div>
+    <div class="field"><label class="req">¿Cómo querés pagar?</label>
+      <select id="sub_cycle" onchange="onSubCycleChange(${plan.priceUsd}, ${plan.annualUsd}, ${plan.priceArs}, ${plan.annualArs})">
+        <option value="monthly">Mensual — $${plan.priceUsd.toFixed(2)} USD por mes</option>
+        <option value="annual">Anual (1 pago) — $${plan.annualUsd.toFixed(2)} USD, ahorrás ${annualDiscountPct}%</option>
+      </select>
+    </div>
     <div class="stat-grid" style="margin-bottom:16px;">
-      <div class="stat-card"><div class="sl">Precio mensual</div><div class="sv gold">$${plan.priceUsd.toFixed(2)} USD</div></div>
-      <div class="stat-card"><div class="sl">En pesos</div><div class="sv">$${fmtArsSub(plan.priceArs)} ARS</div></div>
+      <div class="stat-card"><div class="sl">A pagar ahora</div><div class="sv gold" id="sub_price_usd">$${plan.priceUsd.toFixed(2)} USD</div></div>
+      <div class="stat-card"><div class="sl">En pesos</div><div class="sv" id="sub_price_ars">$${fmtArsSub(plan.priceArs)} ARS</div></div>
     </div>
     <form onsubmit="submitSubscribe(event, '${planKey}')">
       <div class="field"><label class="req">Nombre del titular que va a pagar</label><input id="sub_holder" required placeholder="Nombre y apellido"></div>
       <div class="field"><label class="req">¿Con qué compañía vas a transferir?</label>
         <select id="sub_bank">${banks.map(b => `<option value="${b}">${b}</option>`).join('')}</select>
       </div>
-      <div class="notice" style="margin-bottom:16px;">Pago mensual manual por ahora: transferís, mandás el comprobante por Gmail (desde el mismo Gmail de tu cuenta), y el admin lo aprueba. La solicitud vence en 1 hora si no se confirma.</div>
+      <div class="notice" style="margin-bottom:16px;">Pago manual por ahora: transferís, mandás el comprobante por Gmail (desde el mismo Gmail de tu cuenta), y el admin lo aprueba. La solicitud vence en 1 hora si no se confirma.</div>
+      <div class="field" style="display:flex; align-items:flex-start; gap:8px;">
+        <input type="checkbox" id="sub_terms" required style="width:auto; margin-top:3px;">
+        <label for="sub_terms" style="margin:0; font-weight:400; font-size:13px;">Entiendo que si cancelo la suscripción <b>no se me devuelve el dinero ya pagado</b>, y que (salvo que haya pagado el plan anual) <b>se renueva automáticamente cada mes en la misma fecha</b>, teniendo que volver a pagar para seguir con los beneficios.</label>
+      </div>
       <div class="modal-foot"><button class="btn btn-primary" type="submit">Enviar pedido de suscripción</button></div>
     </form>`);
+}
+function onSubCycleChange(monthlyUsd, annualUsd, monthlyArs, annualArs) {
+  const cycle = document.getElementById('sub_cycle').value;
+  document.getElementById('sub_price_usd').textContent = `$${(cycle === 'annual' ? annualUsd : monthlyUsd).toFixed(2)} USD`;
+  document.getElementById('sub_price_ars').textContent = `$${fmtArsSub(cycle === 'annual' ? annualArs : monthlyArs)} ARS`;
 }
 async function submitSubscribe(e, planKey) {
   e.preventDefault();
   try {
     const { purchase } = await Api.post('/subscriptions/subscribe', {
-      plan: planKey, bankCompany: document.getElementById('sub_bank').value, holderName: document.getElementById('sub_holder').value.trim()
+      plan: planKey,
+      billingCycle: document.getElementById('sub_cycle').value,
+      bankCompany: document.getElementById('sub_bank').value,
+      holderName: document.getElementById('sub_holder').value.trim(),
+      acceptedSubTerms: document.getElementById('sub_terms').checked
     });
-    const qrText = `Alias: ${purchase.alias}\nBanco: ${purchase.bankCompany}\nMonto: $${fmtArsSub(purchase.priceArs)} ARS (suscripción mensual)\nTitular: ${purchase.holderName}`;
-    const qrImg = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(qrText)}`;
     renderModal(`
       <div class="modal-head"><h2>Solicitud enviada</h2><button class="modal-close" onclick="closeModal(); goTo('subscription');">×</button></div>
-      <div style="text-align:center;"><img src="${qrImg}" alt="QR de pago" style="border-radius:12px; border:1px solid var(--border-soft); margin-bottom:14px;"></div>
       <div class="stat-grid" style="margin-bottom:16px;">
-        <div class="stat-card"><div class="sl">Alias</div><div class="sv mono" style="font-size:15px;">${purchase.alias}</div></div>
+        <div class="stat-card"><div class="sl">Alias / CBU</div><div class="sv mono" style="font-size:15px;">${purchase.alias}</div></div>
         <div class="stat-card"><div class="sl">Monto a transferir</div><div class="sv gold">$${fmtArsSub(purchase.priceArs)} ARS</div></div>
       </div>
       <div class="notice" style="margin-bottom:16px;">Mandá el comprobante por Gmail a <b>${purchase.contactEmail}</b> — desde el mismo Gmail de tu cuenta.</div>
@@ -341,7 +341,7 @@ async function submitSubscribe(e, planKey) {
   } catch (err) { toast(err.message, true); }
 }
 async function cancelSubscription() {
-  if (!confirm('¿Seguro que querés cancelar tu suscripción? Volvés al plan Free al instante.')) return;
+  if (!confirm('¿Seguro que querés cancelar tu suscripción? Volvés al plan Free al instante y NO se devuelve el dinero ya pagado.')) return;
   try { await Api.post('/subscriptions/cancel'); toast('Volviste al plan Free.'); goTo('subscription'); }
   catch (err) { toast(err.message, true); }
 }

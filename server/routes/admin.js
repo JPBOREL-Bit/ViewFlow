@@ -495,8 +495,9 @@ router.put('/subscriptions/:id/approve', (req, res) => {
   purchase.approvedAt = Date.now();
   acc.subPlan = purchase.plan;
   acc.subStatus = 'active';
+  acc.subBillingCycle = purchase.billingCycle || 'monthly';
   acc.subStartedAt = Date.now();
-  acc.subRenewsAt = Date.now() + 30 * 24 * 60 * 60 * 1000;
+  acc.subRenewsAt = Date.now() + (purchase.billingCycle === 'annual' ? 365 : 30) * 24 * 60 * 60 * 1000;
   const { getPlan } = require('../subscriptions');
   addLog(db, { type: 'subscription', message: `Admin aprobó el pago de ${acc.visibleUser} — pasa al plan ${getPlan(purchase.plan).label}`, accountName: acc.visibleUser });
   saveDB(db);

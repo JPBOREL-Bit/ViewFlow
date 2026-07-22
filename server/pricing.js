@@ -4,7 +4,7 @@
 // cobra o se acredita siempre se recalcula acá antes de tocar la base.
 
 const CREDIT_WINDOW_SECONDS = 30;
-const CREDITS_PER_WINDOW = 1.667; // 1.667 créditos cada 30s vistos
+const CREDITS_PER_WINDOW = 1.6; // 1.6 créditos cada 30s vistos
 
 function floor1(n) { return Math.floor(n * 10) / 10; } // trunca a 1 decimal (viewers)
 

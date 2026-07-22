@@ -30,13 +30,9 @@ function extractYouTubeId(url) {
   return null;
 }
 
-const PLATFORMS = ['youtube', 'tiktok', 'instagram'];
+const PLATFORMS = ['youtube'];
 function urlMatchesPlatform(url, platform) {
-  const u = String(url).toLowerCase();
-  if (platform === 'youtube') return !!extractYouTubeId(url);
-  if (platform === 'tiktok') return u.includes('tiktok.com');
-  if (platform === 'instagram') return u.includes('instagram.com');
-  return false;
+  return !!extractYouTubeId(url);
 }
 
 // ---- Cotización en vivo (para el formulario de crear campaña) ----
@@ -59,12 +55,11 @@ router.post('/', requireAuth('creator'), (req, res) => {
   const settings = db.settings;
   const s = parseInt(seconds, 10);
   const v = parseInt(views, 10);
-  const plat = PLATFORMS.includes(platform) ? platform : 'youtube';
+  const plat = 'youtube';
 
   if (!title || !url) return res.status(400).json({ error: 'Faltan título o URL.' });
   if (!urlMatchesPlatform(url, plat)) {
-    const nice = { youtube: 'YouTube (video o Shorts)', tiktok: 'TikTok', instagram: 'Instagram' }[plat];
-    return res.status(400).json({ error: `El link no parece ser de ${nice}. Elegí la plataforma correcta o revisá el link.` });
+    return res.status(400).json({ error: 'Solo se admiten links de YouTube (video o Shorts).' });
   }
   if (!s || s < 30) return res.status(400).json({ error: 'El tiempo mínimo de una campaña es 30 segundos.' });
   if (!v || v < (settings.minCampaignViews || 10)) return res.status(400).json({ error: `El mínimo de viewers es ${settings.minCampaignViews || 10}.` });
@@ -153,7 +148,7 @@ router.post('/:id/participate/start', requireAuth('viewer'), (req, res) => {
   };
   db.participations.push(part);
   saveDB(db);
-  res.json({ ok: true, participation: part, videoId: camp.platform === 'tiktok' || camp.platform === 'instagram' ? null : extractYouTubeId(camp.url) });
+  res.json({ ok: true, participation: part, videoId: extractYouTubeId(camp.url) });
 });
 
 // ---- Participar: informar la duración real del video (si es más corto que
