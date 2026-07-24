@@ -22,16 +22,18 @@ function campaignCost(seconds, views) {
 function creditsToUsd(credits, settings) { return credits * settings.creditToUsd; }
 function creditsToArs(credits, settings) { return credits * settings.creditToUsd * settings.usdRate; }
 
-function purchaseQuote(credits, settings) {
+function purchaseQuote(credits, settings, discountPct) {
   const baseUsd = creditsToUsd(credits, settings);
-  const totalUsd = baseUsd * (1 + settings.purchaseTaxPct / 100);
+  let totalUsd = baseUsd * (1 + settings.purchaseTaxPct / 100);
   const taxCredits = Math.round(credits * settings.purchaseTaxPct / 100);
+  if (discountPct > 0) totalUsd = totalUsd * (1 - discountPct / 100);
   const rate = settings.usdRateVenta || settings.usdRate;
   return {
     credits,
     usd: Number(totalUsd.toFixed(2)),
     ars: Math.round(totalUsd * rate),
-    taxCredits
+    taxCredits,
+    discountPct: discountPct || 0
   };
 }
 

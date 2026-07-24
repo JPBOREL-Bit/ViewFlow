@@ -5,6 +5,7 @@ const { getDB, saveDB, addLog } = require('../db');
 const { requireAuth } = require('../auth');
 const { uid } = require('../util');
 const { purchaseQuote } = require('../pricing');
+const { referredDiscountActive, REFERRED_CREATOR_DISCOUNT_PCT } = require('../economy');
 
 const ONE_HOUR = 60 * 60 * 1000;
 const PACKAGE_OPTIONS = [100, 250, 500, 750, 1000, 1500, 2000, 2500, 3000, 4000, 5000];
@@ -22,10 +23,13 @@ function purgeExpired(db) {
 
 router.get('/packages', requireAuth(), (req, res) => {
   const db = getDB();
+  const discountPct = referredDiscountActive(req.account) ? REFERRED_CREATOR_DISCOUNT_PCT : 0;
   const packages = PACKAGE_OPTIONS
-    .map(c => purchaseQuote(c, db.settings));
+    .map(c => purchaseQuote(c, db.settings, discountPct));
   res.json({
     packages,
+    discountPct,
+    discountPurchasesLeft: discountPct ? 5 - (req.account.referredDiscountPurchasesUsed || 0) : 0,
     methods: PAYMENT_METHODS,
     banks: BANK_COMPANIES,
     settings: {
@@ -41,7 +45,8 @@ router.get('/packages', requireAuth(), (req, res) => {
 router.get('/quote', requireAuth(), (req, res) => {
   const db = getDB();
   const credits = Math.max(100, parseInt(req.query.credits, 10) || 100);
-  res.json(purchaseQuote(credits, db.settings));
+  const discountPct = referredDiscountActive(req.account) ? REFERRED_CREATOR_DISCOUNT_PCT : 0;
+  res.json(purchaseQuote(credits, db.settings, discountPct));
 });
 
 router.post('/purchases', requireAuth('creator'), (req, res) => {
@@ -56,10 +61,11 @@ router.post('/purchases', requireAuth('creator'), (req, res) => {
     return res.status(400).json({ error: 'Elegí con qué compañía vas a transferir.' });
   }
 
-  const quote = purchaseQuote(c, db.settings);
+  const discountPct = referredDiscountActive(req.account) ? REFERRED_CREATOR_DISCOUNT_PCT : 0;
+  const quote = purchaseQuote(c, db.settings, discountPct);
   const purchase = {
     id: uid('pur'), creatorId: req.account.id, credits: c,
-    usd: quote.usd, ars: quote.ars, taxCredits: quote.taxCredits,
+    usd: quote.usd, ars: quote.ars, taxCredits: quote.taxCredits, discountPct,
     method: chosenMethod, bankCompany: chosenMethod === 'Transferencia bancaria' ? bankCompany : null,
     holderName: String(holderName).trim(),
     alias: db.settings.paymentAlias, contactEmail: db.settings.paymentContactEmail,

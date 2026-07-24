@@ -97,6 +97,17 @@ app.get('/api/version', (req, res) => {
 // Frontend estático (las páginas separadas: landing, creator, viewer, admin).
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
+// Link de invitación por path: viewflow.onrender.com/CODIGO (código de un
+// creador) → fuerza el registro como creador. Va DESPUÉS de los archivos
+// estáticos para no pisar ninguna ruta real (css/, js/, *.html, etc.), y
+// solo redirige si el código realmente existe.
+app.get('/:code', (req, res, next) => {
+  const db = getDB();
+  const acc = db.accounts.find(a => a.role === 'creator' && (a.refCode || '').toLowerCase() === req.params.code.toLowerCase());
+  if (!acc) return next();
+  res.redirect(`/?ref=${encodeURIComponent(acc.refCode)}&forceRole=creator`);
+});
+
 app.use((req, res) => res.status(404).json({ error: 'No encontrado.' }));
 app.use((err, req, res, next) => {
   console.error(err);

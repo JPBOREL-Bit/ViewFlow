@@ -83,7 +83,7 @@ router.post('/free', requireAuth('creator'), (req, res) => {
 
   const ip = (req.headers['x-forwarded-for'] || req.ip || '').toString().split(',')[0].trim();
   const device = parseDevice(req.headers['user-agent']);
-  const fraudSignal = findFraudMatch(db, acc, ip, device);
+  const fraudSignal = findFraudMatch(db, acc, ip, device, db.freeCampaignClaims);
   if (fraudSignal) {
     addLog(db, { type: 'alert', message: `Intento de reclamar campaña gratuita bloqueado: ${acc.visibleUser} coincide con un reclamo anterior por ${fraudSignal}`, accountName: acc.visibleUser, ip });
     saveDB(db);
@@ -286,24 +286,6 @@ router.post('/:id/participate/complete', requireAuth('viewer'), (req, res) => {
     }
   }
 
-  // Recompensa por hito de campañas completadas (financiada por el Fondo de recompensas, nunca más de lo disponible).
-  ensureEconomyState(db);
-  if (!Array.isArray(acc.milestonesClaimed)) acc.milestonesClaimed = [];
-  const totalCompleted = db.participations.filter(p => p.viewerId === acc.id && p.status === 'completed').length;
-  const milestones = Object.keys(db.settings.rewardMilestones).map(Number).sort((a, b) => a - b);
-  for (const m of milestones) {
-    if (totalCompleted >= m && !acc.milestonesClaimed.includes(m)) {
-      const rewardAmount = db.settings.rewardMilestones[m];
-      if (db.rewardsFund.balance >= rewardAmount) {
-        db.rewardsFund.balance -= rewardAmount;
-        creditAccount(acc, rewardAmount, `Recompensa por ${m} campañas completadas`);
-        acc.milestonesClaimed.push(m);
-        addLog(db, { type: 'referral', message: `${acc.visibleUser} alcanzó ${m} campañas completadas — recompensa de ${rewardAmount} créditos del Fondo de recompensas`, accountName: acc.visibleUser });
-      } else {
-        addLog(db, { type: 'alert', message: `${acc.visibleUser} alcanzó el hito de ${m} campañas, pero el Fondo de recompensas no tiene saldo suficiente (necesita ${rewardAmount}, hay ${db.rewardsFund.balance})`, accountName: acc.visibleUser });
-      }
-    }
-  }
   saveDB(db);
   res.json({ ok: true, reward: camp.rewardPerView, credits: acc.credits });
 });

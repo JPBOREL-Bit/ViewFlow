@@ -25,6 +25,17 @@ Api.get('/auth/me').then(({ account }) => {
   else if (account.role === 'admin') window.location.href = '/admin.html';
 }).catch(() => {});
 
+// Link de invitación: si entraron con un código de creador (por path
+// /CODIGO, redirigido por el servidor a /?ref=CODIGO&forceRole=creator, o
+// directamente con ?ref=), solo pueden registrarse como creador.
+const __forceRoleCreator = new URLSearchParams(window.location.search).get('forceRole') === 'creator';
+if (__forceRoleCreator) {
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('button[onclick*="openRegister(\'viewer\')"]').forEach(btn => btn.style.display = 'none');
+    openRegister('creator');
+  });
+}
+
 function closeModal() { document.getElementById('modalRoot').innerHTML = ''; }
 function renderModal(html, extraClass) {
   document.getElementById('modalRoot').innerHTML =
@@ -53,6 +64,7 @@ function openRegister(role) {
   if (role === 'creator') {
     renderModal(`
       <div class="modal-head"><h2>Registro — Creador</h2><button class="modal-close" onclick="closeModal()">×</button></div>
+      ${__forceRoleCreator ? '<div class="notice" style="margin-bottom:16px;">Entraste con un link de invitación — esos links solo sirven para registrarte como creador.</div>' : ''}
       <form onsubmit="submitRegister(event,'creator')">
         <div class="field"><label class="req">Nombre visible</label><input id="rc_visible" required></div>
         <div class="field"><label class="req">Nombre completo</label><input id="rc_name" required></div>
@@ -60,13 +72,13 @@ function openRegister(role) {
           <div class="field"><label>Teléfono (opcional — te lo vamos a pedir al comprar o retirar)</label><input id="rc_phone"></div>
           <div class="field"><label class="req">Gmail</label><input id="rc_email" type="email" required></div>
         </div>
-        <div class="field"><label>Usuario de YouTube</label><input id="rc_yt" placeholder="@usuario"></div>
+        <div class="field"><label class="req">Usuario de YouTube</label><input id="rc_yt" required placeholder="@usuario"></div>
         ${passwordFieldHTML('rc_pass', 'Contraseña', true, 8)}
         <div class="mini-help" style="margin-bottom:14px;">Te vamos a mandar un código de verificación a este Gmail para activar tu cuenta.</div>
         ${termsCheckboxHTML('rc_terms')}
         <div class="modal-foot">
           <button class="btn btn-primary" type="submit">Crear cuenta de creador</button>
-          <div class="switch-note">¿Sos viewer? <button type="button" onclick="openRegister('viewer')">Registrarte como viewer</button></div>
+          ${__forceRoleCreator ? '' : `<div class="switch-note">¿Sos viewer? <button type="button" onclick="openRegister('viewer')">Registrarte como viewer</button></div>`}
         </div>
       </form>`);
   } else {
@@ -109,8 +121,8 @@ async function submitRegister(e, role) {
   const termsEl = document.getElementById(role === 'creator' ? 'rc_terms' : 'rv_terms');
   if (!termsEl.checked) { toast('Tenés que aceptar los Términos y la Política de Privacidad para registrarte.', true); return; }
   const payload = role === 'creator'
-    ? { role, visibleUser: rc_visible.value.trim(), name: rc_name.value.trim(), phone: rc_phone.value.trim(), email: rc_email.value.trim(), ytUser: rc_yt.value.trim(), password: rc_pass.value, acceptedTerms: true, ref: getRefFromUrl() }
-    : { role, name: rv_name.value.trim(), visibleUser: rv_visible.value.trim(), email: rv_email.value.trim(), phone: rv_phone.value.trim(), password: rv_pass.value, acceptedTerms: true, ref: getRefFromUrl() };
+    ? { role, visibleUser: rc_visible.value.trim(), name: rc_name.value.trim(), phone: rc_phone.value.trim(), email: rc_email.value.trim(), ytUser: rc_yt.value.trim(), password: rc_pass.value, acceptedTerms: true, ref: getRefFromUrl(), forceRole: __forceRoleCreator ? 'creator' : undefined }
+    : { role, name: rv_name.value.trim(), visibleUser: rv_visible.value.trim(), email: rv_email.value.trim(), phone: rv_phone.value.trim(), password: rv_pass.value, acceptedTerms: true, ref: getRefFromUrl(), forceRole: __forceRoleCreator ? 'creator' : undefined };
   try {
     await Api.post('/auth/register', payload);
     renderModal(`
@@ -179,7 +191,13 @@ function startResendCooldown() {
 async function submitVerifyAccount(e) {
   e.preventDefault();
   try {
-    await Api.post('/auth/verify-account', { email: va_email.value.trim(), password: va_pass.value, code: va_code.value.trim() });
+    const { account } = await Api.post('/auth/verify-account', { email: va_email.value.trim(), password: va_pass.value, code: va_code.value.trim() });
+    if (account) {
+      if (account.role === 'creator') window.location.href = '/creator.html';
+      else if (account.role === 'viewer') window.location.href = '/viewer.html';
+      else window.location.href = '/admin.html';
+      return;
+    }
     renderModal(`
       <div class="modal-head"><h2>Cuenta verificada</h2><button class="modal-close" onclick="closeModal()">×</button></div>
       <div class="notice">Listo, tu cuenta ya está activa.</div>

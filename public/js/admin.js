@@ -339,38 +339,34 @@ async function renderEconomy(main) {
   const d = await Api.get('/admin/economy');
   const fp = d.freeCampaignProgram;
   main.innerHTML = `
-    <div class="page-head"><div><h1>Economía</h1><div class="ps">Pool semanal, fondo de recompensas y campaña gratuita para creadores</div></div></div>
-    <div class="notice" style="margin-bottom:20px;">Economía cerrada: los créditos que circulan salen únicamente de compras de creadores, del impuesto sobre esas compras, y de donaciones entre usuarios — nunca se emiten créditos gratis fuera del fondo inicial de campaña gratuita (tope fijo de ${fp.fundTotal}). Si no hay creadores comprando, no hay campañas, ni pool, ni recompensas nuevas.</div>
+    <div class="page-head"><div><h1>Economía</h1><div class="ps">Pool semanal y campaña gratuita para creadores</div></div></div>
+    <div class="notice" style="margin-bottom:20px;">Economía cerrada: los créditos que circulan salen únicamente de compras de creadores, del impuesto sobre esas compras, de donaciones entre usuarios, del Pool semanal y de comisiones por referidos — nunca se emiten créditos gratis fuera del fondo inicial de campaña gratuita (tope fijo de ${fp.fundTotal}). Ya no hay recompensas por hitos de campañas vistas — se eliminaron por decisión explícita.</div>
 
     <div class="stat-grid" style="margin-bottom:24px;">
       <div class="stat-card"><div class="sl">Pool — saldo actual</div><div class="sv gold">${fmtCr(d.pool.balance)} cr</div></div>
-      <div class="stat-card"><div class="sl">Fondo de recompensas — saldo</div><div class="sv teal">${fmtCr(d.rewardsFund.balance)} cr</div></div>
       <div class="stat-card"><div class="sl">Campaña gratuita — fondo usado</div><div class="sv">${fp.fundUsed} / ${fp.fundTotal} cr</div></div>
       <div class="stat-card"><div class="sl">Campaña gratuita — cupos usados</div><div class="sv">${fp.usedCampaigns} / ${fp.maxCampaigns}</div></div>
+      <div class="stat-card"><div class="sl">Reclamos de campaña gratuita</div><div class="sv">${d.freeCampaignClaimsCount}</div></div>
+    </div>
+
+    <div class="section-card" style="margin-bottom:20px; max-width:640px;">
+      <h3 style="margin-bottom:10px;">Reparto del impuesto de compra (15%)</h3>
+      <div class="mini-help">Caso normal: <b>${d.taxSplit.normal.platformPct}%</b> ViewFlow / <b>${d.taxSplit.normal.poolPct}%</b> Pool.</div>
+      <div class="mini-help">Creador referido: <b>${d.taxSplit.referred.platformPct}%</b> ViewFlow / <b>${d.taxSplit.referred.poolPct}%</b> Pool / <b>${d.taxSplit.referred.referrerPct}%</b> para quien lo invitó — se acredita al instante en cada compra aprobada, no solo la primera.</div>
     </div>
 
     <div class="section-card" style="margin-bottom:20px; max-width:640px;">
       <h3 style="margin-bottom:10px;">Pool semanal</h3>
-      <div class="mini-help" style="margin-bottom:12px;">Se reparte solo entre viewers con cuenta activa y al menos 2 campañas completadas en los últimos 3 días. Se reparte solo automáticamente cada semana, o podés forzarlo ahora.</div>
+      <div class="mini-help" style="margin-bottom:12px;">Se reparte entre viewers con cuenta activa y al menos 2 campañas completadas en los últimos 3 días, en proporción a cuántas campañas vio cada uno (no en partes iguales). Se reparte solo automáticamente cada semana, o podés forzarlo ahora.</div>
       <button class="btn btn-primary btn-sm" onclick="distributePoolNow()">Repartir pool ahora</button>
       ${d.pool.history.length ? `<table style="margin-top:14px;"><thead><tr><th>Fecha</th><th>Repartido</th><th>Elegibles</th></tr></thead>
       <tbody>${d.pool.history.slice(0, 10).map(h => `<tr><td>${new Date(h.ts).toLocaleString()}</td><td class="mono">${h.distributed} cr</td><td>${h.eligibleCount}</td></tr>`).join('')}</tbody></table>` : ''}
     </div>
 
-    <div class="section-card" style="margin-bottom:20px; max-width:640px;">
+    <div class="section-card" style="max-width:640px;">
       <h3 style="margin-bottom:10px;">Campaña gratuita para creadores</h3>
       <div class="mini-help" style="margin-bottom:12px;">${fp.enabled ? 'Activa' : 'Desactivada manualmente'} · ${fp.usedCampaigns}/${fp.maxCampaigns} cupos · ${fp.fundUsed}/${fp.fundTotal} créditos del fondo · ${d.freeCampaignClaimsCount} reclamos totales · ventana de ${fp.durationDays} días desde ${new Date(fp.startedAt).toLocaleDateString()}</div>
       <button class="btn btn-sm ${fp.enabled ? 'btn-danger' : 'btn-teal'}" onclick="toggleFreeCampaign(${!fp.enabled})">${fp.enabled ? 'Desactivar ahora' : 'Reactivar'}</button>
-    </div>
-
-    <div class="section-card" style="max-width:640px;">
-      <h3 style="margin-bottom:10px;">Recompensas por hitos de campañas completadas</h3>
-      <div class="mini-help" style="margin-bottom:12px;">Se pagan solas cuando un viewer llega al hito, siempre que el Fondo de recompensas tenga saldo suficiente.</div>
-      <form onsubmit="saveMilestones(event)">
-        ${Object.keys(d.rewardMilestones).sort((a, b) => a - b).map(m => `
-          <div class="field"><label>${m} campañas</label><input class="milestone-input" data-m="${m}" type="number" value="${d.rewardMilestones[m]}"></div>`).join('')}
-        <button class="btn btn-primary btn-sm" type="submit">Guardar recompensas</button>
-      </form>
     </div>`;
 }
 async function distributePoolNow() {
@@ -379,13 +375,6 @@ async function distributePoolNow() {
 }
 async function toggleFreeCampaign(enabled) {
   try { await Api.put('/admin/economy/settings', { freeCampaignEnabled: enabled }); toast('Actualizado.'); renderEconomy(document.getElementById('mainContent')); }
-  catch (err) { toast(err.message, true); }
-}
-async function saveMilestones(e) {
-  e.preventDefault();
-  const rewardMilestones = {};
-  document.querySelectorAll('.milestone-input').forEach(el => { rewardMilestones[el.dataset.m] = Number(el.value); });
-  try { await Api.put('/admin/economy/settings', { rewardMilestones }); toast('Recompensas guardadas.'); }
   catch (err) { toast(err.message, true); }
 }
 
